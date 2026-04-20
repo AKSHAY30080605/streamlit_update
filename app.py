@@ -55,77 +55,299 @@ def get_models_by_task(task_type):
         }
 
 
-# Custom CSS for Modern Design (Dark sleek theme)
+# Custom CSS for Modern Design (Dark sleek theme with improved contrast)
 st.markdown("""
     <style>
     /* Main app background */
     .stApp {
-        background-color: #0f172a;
-        color: #f8fafc;
+        background-color: #0d1117;
+        color: #e6edf3;
     }
     
-    /* Modify sidebar */
+    /* Modify sidebar with better contrast */
     [data-testid="stSidebar"] {
-        background-color: #1e293b;
+        background-color: #161b22;
+        border-right: 1px solid #30363d;
     }
     
-    /* Headers */
-    h1, h2, h3, h4, h5, h6 {
-        color: #0ea5e9 !important;
+    /* Headers - Improved contrast */
+    h1 {
+        color: #58a6ff !important;
         font-family: 'Inter', sans-serif;
-        font-weight: 700;
+        font-weight: 700 !important;
+        letter-spacing: -0.5px;
     }
     
-    /* Main text */
+    h2 {
+        color: #58a6ff !important;
+        font-family: 'Inter', sans-serif;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #30363d;
+        padding-bottom: 10px;
+    }
+    
+    h3, h4, h5, h6 {
+        color: #79c0ff !important;
+        font-family: 'Inter', sans-serif;
+        font-weight: 700 !important;
+    }
+    
+    /* Main text - Better contrast */
     p, span, div {
-        color: #e2e8f0;
+        color: #e6edf3 !important;
     }
     
-    /* Metric labels - enhanced visibility */
+    /* Metric labels - Enhanced visibility with better contrast */
     [data-testid="metric-container"] {
-        background-color: rgba(14, 165, 233, 0.1);
-        border-left: 4px solid #0ea5e9;
+        background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(79, 195, 247, 0.05) 100%);
+        border-left: 4px solid #58a6ff;
+        border-radius: 8px;
+        padding: 12px !important;
     }
     
     [data-testid="metric-container"] label {
-        color: #38bdf8 !important;
+        color: #79c0ff !important;
+        font-weight: 700 !important;
+        font-size: 13px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    [data-testid="metric-container"] div {
+        color: #f0f6fc !important;
         font-weight: 600 !important;
-        font-size: 14px;
+        font-size: 24px !important;
     }
     
     /* Markdown text enhancement */
     .markdown-text-container {
-        color: #e2e8f0 !important;
+        color: #e6edf3 !important;
     }
     
-    /* Subheader styling */
-    [data-testid="stVerticalBlock"] h3 {
-        color: #0ea5e9 !important;
-    }
-    
-    /* Caption styling */
+    /* Caption styling - Improved contrast */
     .stCaption {
-        color: #cbd5e1 !important;
+        color: #8b949e !important;
+        font-weight: 500 !important;
     }
     
-    /* Buttons */
+    /* Buttons - Better visual feedback */
     div.stButton > button:first-child {
-        background-color: #0ea5e9;
-        color: #ffffff;
-        border: none;
+        background: linear-gradient(135deg, #0969da 0%, #0860ca 100%);
+        color: #000000 !important;
+        border: 1px solid #1f6feb !important;
         border-radius: 8px;
-        font-weight: bold;
-        transition: 0.3s;
-    }
-    div.stButton > button:first-child:hover {
-        background-color: #0284c7;
-        color: #ffffff;
-        border: 1px solid #38bdf8;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
     
-    /* Style st.info and success boxes */
-    div.stAlert {
-        border-radius: 10px;
+    div.stButton > button:first-child:hover {
+        background: linear-gradient(135deg, #0860ca 0%, #073a99 100%);
+        color: #000000 !important;
+        border: 1px solid #58a6ff !important;
+        box-shadow: 0 3px 12px rgba(9, 105, 218, 0.4);
+        transform: translateY(-1px);
+    }
+    
+    /* Style st.info boxes */
+    .stAlert {
+        border-radius: 8px;
+        border: 1px solid #30363d;
+        background-color: rgba(88, 166, 255, 0.05) !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    .stAlert > div {
+        color: #e6edf3 !important;
+    }
+    
+    /* Sidebar text contrast */
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] div {
+        color: #e6edf3 !important;
+    }
+    
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #79c0ff !important;
+    }
+    
+    /* Radio and checkbox labels */
+    [data-testid="stRadio"] label, [data-testid="stCheckbox"] label {
+        color: #e6edf3 !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Input field styling */
+    input, select, textarea {
+        background-color: #0d1117 !important;
+        color: #e6edf3 !important;
+        border: 1px solid #30363d !important;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        border-color: #58a6ff !important;
+        box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1) !important;
+    }
+    
+    /* Selectbox text color */
+    [data-testid="stSelectbox"] label {
+        color: #e6edf3 !important;
+    }
+    
+    [data-baseweb="select"] div {
+        color: #e6edf3 !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: transparent;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background-color: rgba(88, 166, 255, 0.05);
+    }
+    
+    /* Streamlit tabs styling */
+    [data-baseweb="tab"] {
+        color: #8b949e !important;
+    }
+    
+    [data-baseweb="tab"][aria-selected="true"] {
+        color: #58a6ff !important;
+        border-bottom: 2px solid #58a6ff;
+    }
+    
+    /* Dataframe styling */
+    [data-testid="stDataFrame"] {
+        border: 1px solid #30363d !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Success and warning alerts */
+    .stSuccess {
+        background-color: rgba(3, 102, 214, 0.1) !important;
+        color: #58a6ff !important;
+    }
+    
+    .stWarning {
+        background-color: rgba(187, 128, 9, 0.1) !important;
+        color: #d29922 !important;
+    }
+    
+    /* File uploader styling */
+    [data-testid="stFileUploader"] {
+        background-color: rgba(88, 166, 255, 0.08) !important;
+        border: 2px dashed #58a6ff !important;
+        border-radius: 8px !important;
+        padding: 20px !important;
+    }
+    
+    [data-testid="stFileUploader"] label {
+        color: #79c0ff !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
+    }
+    
+    [data-testid="stFileUploaderDropzone"] {
+        background-color: transparent !important;
+    }
+    
+    [data-testid="stFileUploaderDropzone"] button {
+        background-color: #0969da !important;
+        color: #000000 !important;
+        border: none !important;
+        font-weight: 600 !important;
+        padding: 10px 20px !important;
+        border-radius: 6px !important;
+    }
+    
+    [data-testid="stFileUploaderDropzone"] button:hover {
+        background-color: #0860ca !important;
+        box-shadow: 0 2px 8px rgba(9, 105, 218, 0.4) !important;
+    }
+    
+    /* Dropdown menu styling */
+    [data-baseweb="menu"] li div {
+        color: #e6edf3 !important;
+    }
+    
+    [data-baseweb="menu"] {
+        background-color: #1c2128 !important;
+    }
+    
+    [data-baseweb="listbox"] li {
+        color: #e6edf3 !important;
+        background-color: #161b22 !important;
+    }
+    
+    /* Multiselect and option styling - Fix all dropdown items */
+    [role="option"] {
+        color: #e6edf3 !important;
+        background-color: #161b22 !important;
+    }
+    
+    [role="option"]:hover {
+        background-color: #0d419f !important;
+    }
+    
+    /* Streamlit multiselect tokens/tags */
+    [data-testid="stMultiSelect"] div {
+        color: #e6edf3 !important;
+    }
+    
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] {
+        background-color: #0969da !important;
+        color: #ffffff !important;
+    }
+    
+    /* All option/select elements */
+    option {
+        background-color: #161b22 !important;
+        color: #e6edf3 !important;
+    }
+    
+    optgroup {
+        background-color: #161b22 !important;
+        color: #e6edf3 !important;
+    }
+    
+    /* Ensure all text in popovers and menus is visible */
+    [data-baseweb="popover"] {
+        background-color: #1c2128 !important;
+        color: #e6edf3 !important;
+    }
+    
+    [data-baseweb="popover"] * {
+        color: #e6edf3 !important;
+    }
+    
+    /* List items in menus */
+    [data-baseweb="menu"] li {
+        background-color: #1c2128 !important;
+    }
+    
+    [data-baseweb="menu"] li:hover {
+        background-color: #0d419f !important;
+    }
+    
+    /* Download button styling */
+    div.stDownloadButton > button:first-child {
+        background: linear-gradient(135deg, #0969da 0%, #0860ca 100%);
+        color: #000000 !important;
+        border: 1px solid #1f6feb !important;
+        border-radius: 8px;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    div.stDownloadButton > button:first-child:hover {
+        background: linear-gradient(135deg, #0860ca 0%, #073a99 100%);
+        color: #000000 !important;
+        border: 1px solid #58a6ff !important;
+        box-shadow: 0 3px 12px rgba(9, 105, 218, 0.4);
+        transform: translateY(-1px);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -455,6 +677,12 @@ if file:
             num_cols = df.select_dtypes(include=np.number).columns
             scaler = MinMaxScaler() if method == "MinMax" else StandardScaler()
             df[num_cols] = scaler.fit_transform(df[num_cols])
+            
+            # Store scaler and numeric columns in session state for later use in predictions
+            st.session_state.scaler = scaler
+            st.session_state.numeric_columns_for_scaling = list(num_cols)
+            st.session_state.scaling_method = method
+            
             st.session_state.current_df = df
             st.rerun()
 
@@ -509,6 +737,10 @@ if file:
             st.session_state.X_test = None
             st.session_state.y_train = None
             st.session_state.y_test = None
+            st.session_state.categorical_mappings = {}  # Store mappings for categorical→numeric
+            st.session_state.scaler = None  # Store scaler object for predictions
+            st.session_state.numeric_columns_for_scaling = []  # Track which columns were scaled
+            st.session_state.scaling_method = None  # Track scaling method (MinMax or Standard)
         
         col1, col2 = st.columns(2)
         
@@ -530,21 +762,18 @@ if file:
             if "features_select" not in st.session_state:
                 st.session_state["features_select"] = all_features
             
-            col_feat1, col_feat2 = st.columns([4, 1])
+            # Filter session state to only include valid features (in case target column changed)
+            valid_default_features = [f for f in st.session_state.get("features_select", all_features) if f in all_features]
+            if not valid_default_features:
+                valid_default_features = all_features
             
-            with col_feat1:
-                selected_features = st.multiselect(
-                    "Choose Features", 
-                    all_features,
-                    default=st.session_state.get("features_select", all_features),
-                    key="features_select"
-                )
-            
-            with col_feat2:
-                st.markdown("###")
-                if st.button("✅ Select All", key="select_all_btn"):
-                    st.session_state["features_select"] = all_features
-                    st.rerun()
+            selected_features = st.multiselect(
+                "Choose Features", 
+                all_features,
+                default=valid_default_features,
+                key="features_select",
+                help="Select the features you want to use for training. All features are selected by default."
+            )
             
             if not selected_features:
                 st.warning("⚠️ Please select at least one feature!")
@@ -552,19 +781,36 @@ if file:
                 y = df[target_col]
                 X = df[selected_features]
                 
+                # Store original data for later preprocessing reference
+                st.session_state.original_X = X.copy()
+                st.session_state.original_df_for_ref = df[selected_features].copy()
+                
+                # Store original feature types before any encoding (update every time for accuracy)
+                original_cat_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
+                st.session_state.original_feature_types = {
+                    'categorical': original_cat_features,
+                    'numeric': [f for f in selected_features if f not in original_cat_features]
+                }
+                
+                # Show feature types diagnostic
+                st.write("**📊 Feature Summary:**")
+                feature_types_summary = []
+                for feat in selected_features:
+                    dtype = str(X[feat].dtype)
+                    is_cat = dtype in ['object', 'category']
+                    feature_types_summary.append({
+                        'Feature': feat,
+                        'Type': 'Categorical' if is_cat else 'Numeric',
+                        'Data Type': dtype,
+                        'Sample Values': str(X[feat].unique()[:3].tolist())
+                    })
+                st.dataframe(pd.DataFrame(feature_types_summary), use_container_width=True, hide_index=True)
+                
                 st.markdown("---")
                 st.markdown("#### Step 4: Select Task Type")
                 task_type = st.selectbox("Choose Task Type", ["Classification", "Regression"], key="task_type_select")
                 st.session_state.task_type = task_type
                 st.caption(f"Target column '{target_col}' has {y.nunique()} unique values")
-                
-                st.markdown("---")
-                st.markdown("#### Step 5: Select Model")
-                
-                available_models = get_models_by_task(task_type)
-                model_name = st.selectbox("Choose Model", list(available_models.keys()), key="model_select")
-                
-                st.markdown("---")
                 
                 # Auto-convert target for classification/regression
                 y_processed = y.copy()
@@ -592,6 +838,12 @@ if file:
                     st.info(info_msg)
                 
                 st.markdown("---")
+                st.markdown("#### Step 5: Select Model")
+                
+                available_models = get_models_by_task(task_type)
+                model_name = st.selectbox("Choose Model", list(available_models.keys()), key="model_select")
+                
+                st.markdown("---")
                 st.markdown("#### Step 6: Advanced Options")
                 
                 col_hp, col_fs = st.columns(2)
@@ -605,98 +857,238 @@ if file:
                     st.caption("Keep only important features - improves performance")
                 
                 st.markdown("---")
+                st.markdown("#### Step 7: Model Parameters Customization (Optional)")
+                
+                # Collapsible section for custom parameters
+                with st.expander("⚙️ **Customize Model Parameters** (Leave empty to use defaults)", expanded=False):
+                    st.markdown("**📌 Random Forest Parameters:**")
+                    rf_cols = st.columns(3)
+                    with rf_cols[0]:
+                        rf_n_estimators = st.number_input("Random Forest - n_estimators", min_value=10, max_value=500, value=None, help="Number of trees in forest (default: 100)")
+                    with rf_cols[1]:
+                        rf_max_depth = st.number_input("Random Forest - max_depth", min_value=1, max_value=50, value=None, help="Max depth of tree (default: None)")
+                    with rf_cols[2]:
+                        rf_min_samples = st.number_input("Random Forest - min_samples_split", min_value=2, max_value=20, value=None, help="Min samples to split (default: 2)")
+                    
+                    st.divider()
+                    st.markdown("**📌 Decision Tree Parameters:**")
+                    dt_cols = st.columns(2)
+                    with dt_cols[0]:
+                        dt_max_depth = st.number_input("Decision Tree - max_depth", min_value=1, max_value=50, value=None, help="Max depth of tree (default: None)")
+                    with dt_cols[1]:
+                        dt_min_samples = st.number_input("Decision Tree - min_samples_split", min_value=2, max_value=20, value=None, help="Min samples to split (default: 2)")
+                    
+                    if task_type == "Regression":
+                        st.divider()
+                        st.markdown("**📌 Linear Regression Parameters:**")
+                        st.info("ℹ️ Linear Regression uses default parameters (no customization needed)")
+                    
+                    st.divider()
+                    st.info("💡 **Tip:** Leave fields empty to use default parameters. Custom values override defaults.")
+                
+                # Store custom parameters in session state
+                custom_params = {
+                    "rf_n_estimators": rf_n_estimators,
+                    "rf_max_depth": rf_max_depth if rf_max_depth is not None else None,
+                    "rf_min_samples": rf_min_samples,
+                    "dt_max_depth": dt_max_depth if dt_max_depth is not None else None,
+                    "dt_min_samples": dt_min_samples
+                }
+                
+                st.markdown("---")
                 
                 if st.button("🚀 Train Model", key="train_btn"):
+                    # Display selected parameters
+                    with st.expander("📋 **Selected Parameters**", expanded=True):
+                        st.markdown("**Custom Parameters to be used:**")
+                        
+                        any_custom = False
+                        if custom_params.get("rf_n_estimators"):
+                            st.info(f"🌲 Random Forest - n_estimators: **{custom_params['rf_n_estimators']}**")
+                            any_custom = True
+                        if custom_params.get("rf_max_depth") is not None:
+                            st.info(f"🌲 Random Forest - max_depth: **{custom_params['rf_max_depth']}**")
+                            any_custom = True
+                        if custom_params.get("rf_min_samples"):
+                            st.info(f"🌲 Random Forest - min_samples_split: **{custom_params['rf_min_samples']}**")
+                            any_custom = True
+                        if custom_params.get("dt_max_depth") is not None:
+                            st.info(f"🌳 Decision Tree - max_depth: **{custom_params['dt_max_depth']}**")
+                            any_custom = True
+                        if custom_params.get("dt_min_samples"):
+                            st.info(f"🌳 Decision Tree - min_samples_split: **{custom_params['dt_min_samples']}**")
+                            any_custom = True
+                        
+                        if not any_custom:
+                            st.success("✅ Using **default parameters** for all models (no custom values set)")
                     try:
                         X_for_training = X.copy()
                         progress_placeholder = st.empty()
                         
                         # Feature Selection: Remove weak features
                         if use_feature_selection:
-                            progress_placeholder.info("📊 Step 1/3: Analyzing feature importance...")
+                            progress_placeholder.info("📊 Step 1/5: Analyzing feature importance...")
                             
                             # Train a quick model to get feature importance
-                            if model_name in ["Random Forest", "Decision Tree"]:
-                                temp_model = available_models[model_name]
-                                X_temp_train, _, y_temp_train, _ = train_test_split(
-                                    X_for_training, y_processed, test_size=test_size, random_state=42
-                                )
-                                temp_model.fit(X_temp_train, y_temp_train)
-                                
-                                # Get feature importance
-                                feature_importance = temp_model.feature_importances_
-                                importance_df = pd.DataFrame({
-                                    'Feature': X_for_training.columns,
-                                    'Importance': feature_importance
-                                }).sort_values('Importance', ascending=False)
-                                
-                                # Keep features with importance > median
-                                median_importance = importance_df['Importance'].median()
-                                important_features = importance_df[importance_df['Importance'] > median_importance]['Feature'].tolist()
-                                
-                                if len(important_features) > 0:
-                                    X_for_training = X_for_training[important_features]
-                                    st.success(f"✅ Selected {len(important_features)} important features (removed {len(X.columns) - len(important_features)})")
-                                    st.dataframe(importance_df, use_container_width=True)
+                            if task_type == "Classification":
+                                temp_model = RandomForestClassifier(n_estimators=50, random_state=42)
                             else:
-                                st.warning("⚠️ Feature selection only works with Tree-based models. Using all features.")
+                                temp_model = RandomForestRegressor(n_estimators=50, random_state=42)
+                            
+                            X_temp_train, _, y_temp_train, _ = train_test_split(
+                                X_for_training, y_processed, test_size=test_size, random_state=42
+                            )
+                            temp_model.fit(X_temp_train, y_temp_train)
+                            
+                            # Get feature importance
+                            feature_importance = temp_model.feature_importances_
+                            importance_df = pd.DataFrame({
+                                'Feature': X_for_training.columns,
+                                'Importance': feature_importance
+                            }).sort_values('Importance', ascending=False)
+                            
+                            # Keep features with importance > median
+                            median_importance = importance_df['Importance'].median()
+                            important_features = importance_df[importance_df['Importance'] > median_importance]['Feature'].tolist()
+                            
+                            if len(important_features) > 0:
+                                X_for_training = X_for_training[important_features]
+                                st.success(f"✅ Selected {len(important_features)} important features (removed {len(X.columns) - len(important_features)})")
+                                st.dataframe(importance_df, use_container_width=True)
+                        
+                        # Encode categorical features
+                        progress_placeholder.info("📊 Step 2/5: Encoding categorical features...")
+                        X_for_training = X_for_training.copy()
+                        categorical_features = X_for_training.select_dtypes(include=['object', 'category']).columns.tolist()
+                        
+                        # Explicit initialization
+                        if not hasattr(st.session_state, 'categorical_mappings'):
+                            st.session_state.categorical_mappings = {}
+                        
+                        if categorical_features:
+                            st.session_state.categorical_mappings = {}  # Reset to ensure clean state
+                            encoding_info = []
+                            for cat_col in categorical_features:
+                                le = LabelEncoder()
+                                encoded_vals = le.fit_transform(X_for_training[cat_col].astype(str))
+                                X_for_training[cat_col] = encoded_vals
+                                
+                                # Store the mapping for later use in predictions - maps original values to numeric
+                                mapping = dict(zip(le.classes_, le.transform(le.classes_)))
+                                st.session_state.categorical_mappings[cat_col] = mapping
+                                # Only show feature name and count of unique values (concise)
+                                encoding_info.append(f"✅ {cat_col} ({len(mapping)} unique values)")
+                            
+                            st.success(f"🔄 **Encoded {len(categorical_features)} categorical features:**\n" + " | ".join(encoding_info))
+                        else:
+                            st.info("ℹ️ No categorical features found in the selected features.")
+                        
+                        # Apply scaling to numeric features if available in session state
+                        if "scaler" in st.session_state and st.session_state.scaler is not None:
+                            numeric_cols = st.session_state.numeric_columns_for_scaling
+                            if numeric_cols and any(col in X_for_training.columns for col in numeric_cols):
+                                cols_to_scale = [col for col in numeric_cols if col in X_for_training.columns]
+                                X_for_training[cols_to_scale] = st.session_state.scaler.transform(X_for_training[cols_to_scale])
+                                progress_placeholder.info(f"📊 Applied {st.session_state.scaling_method} scaling to numeric features")
+                        
+                        # Store numeric columns for prediction preprocessing
+                        numeric_training_cols = X_for_training.select_dtypes(include=np.number).columns.tolist()
+                        st.session_state.numeric_columns_in_training = numeric_training_cols
                         
                         # Split data
-                        progress_placeholder.info("📊 Step 2/3: Splitting data...")
+                        progress_placeholder.info("📊 Step 3/5: Splitting data...")
                         X_train, X_test, y_train, y_test = train_test_split(
                             X_for_training, y_processed, test_size=test_size, random_state=42
                         )
                         
-                        # Hyperparameter Tuning
-                        if use_hyperparameter_tuning:
-                            progress_placeholder.info("📊 Step 3/3: Tuning hyperparameters (this may take a minute)...")
+                        # Model Training
+                        available_models = get_models_by_task(task_type)
+                        
+                        # Function to apply custom parameters to models
+                        def apply_custom_params(model_name, model_class, custom_params):
+                            """Apply custom parameters to model if provided, otherwise use defaults"""
+                            params = {}
                             
-                            # Define parameter grids for different models
-                            param_grids = {
-                                "Random Forest": {
-                                    "n_estimators": [100, 200],
-                                    "max_depth": [5, 10, None],
-                                    "min_samples_split": [2, 5]
-                                },
-                                "Decision Tree": {
-                                    "max_depth": [5, 10, 15],
-                                    "min_samples_split": [2, 5, 10]
-                                }
-                            }
-                            
-                            if model_name in param_grids:
-                                grid_search = GridSearchCV(
-                                    available_models[model_name],
-                                    param_grids[model_name],
-                                    cv=3,
-                                    n_jobs=-1,
-                                    verbose=0
-                                )
-                                grid_search.fit(X_train, y_train)
-                                model = grid_search.best_estimator_
+                            if model_name == "Random Forest":
+                                if custom_params.get("rf_n_estimators"):
+                                    params["n_estimators"] = custom_params["rf_n_estimators"]
+                                if custom_params.get("rf_max_depth") is not None:
+                                    params["max_depth"] = custom_params["rf_max_depth"]
+                                if custom_params.get("rf_min_samples"):
+                                    params["min_samples_split"] = custom_params["rf_min_samples"]
+                                params["random_state"] = 42
                                 
-                                st.success(f"✅ Best parameters found: {grid_search.best_params_}")
-                                st.info(f"Best CV Score: {grid_search.best_score_:.4f}")
+                            elif model_name == "Decision Tree":
+                                if custom_params.get("dt_max_depth") is not None:
+                                    params["max_depth"] = custom_params["dt_max_depth"]
+                                if custom_params.get("dt_min_samples"):
+                                    params["min_samples_split"] = custom_params["dt_min_samples"]
+                                params["random_state"] = 42
+                            
+                            # Create new instance with custom or default params
+                            if params:
+                                return model_class(**params)
                             else:
-                                st.warning(f"⚠️ Hyperparameter tuning not available for {model_name}. Using default parameters.")
-                                model = available_models[model_name]
+                                return model_class()
+                        
+                        # Train single model
+                        if True:
+                            # Train single model
+                            progress_placeholder.info("📊 Step 4/5: Training model...")
+                            
+                            # Apply custom parameters
+                            model = apply_custom_params(model_name, available_models[model_name].__class__, custom_params)
+                            
+                            # Hyperparameter Tuning
+                            if use_hyperparameter_tuning:
+                                progress_placeholder.info("📊 Step 5/5: Tuning hyperparameters (this may take a minute)...")
+                                
+                                # Define parameter grids for different models
+                                param_grids = {
+                                    "Random Forest": {
+                                        "n_estimators": [100, 200],
+                                        "max_depth": [5, 10, None],
+                                        "min_samples_split": [2, 5]
+                                    },
+                                    "Decision Tree": {
+                                        "max_depth": [5, 10, 15],
+                                        "min_samples_split": [2, 5, 10]
+                                    }
+                                }
+                                
+                                if model_name in param_grids:
+                                    grid_search = GridSearchCV(
+                                        model,
+                                        param_grids[model_name],
+                                        cv=3,
+                                        n_jobs=-1,
+                                        verbose=0
+                                    )
+                                    grid_search.fit(X_train, y_train)
+                                    model = grid_search.best_estimator_
+                                    
+                                    st.success(f"✅ Best parameters found: {grid_search.best_params_}")
+                                    st.info(f"Best CV Score: {grid_search.best_score_:.4f}")
+                                else:
+                                    st.warning(f"⚠️ Hyperparameter tuning not available for {model_name}. Using default parameters.")
+                                    model.fit(X_train, y_train)
+                            else:
+                                progress_placeholder.info("📊 Step 4/4: Training model with custom/default parameters...")
                                 model.fit(X_train, y_train)
-                        else:
-                            progress_placeholder.info("📊 Step 3/3: Training model with default parameters...")
-                            model = available_models[model_name]
-                            model.fit(X_train, y_train)
-                        
-                        # Store in session state
-                        st.session_state.trained_model = model
-                        st.session_state.feature_names = X_train.columns.tolist()
-                        st.session_state.X_train = X_train
-                        st.session_state.X_test = X_test
-                        st.session_state.y_train = y_train
-                        st.session_state.y_test = y_test
-                        
-                        progress_placeholder.empty()
-                        st.success(f"✅ Model trained successfully! ({model_name})")
-                        st.info(f"Training set: {len(X_train)} samples | Test set: {len(X_test)} samples")
+                            
+                            # Store in session state
+                            st.session_state.trained_model = model
+                            st.session_state.feature_names = X_train.columns.tolist()
+                            st.session_state.X_train = X_train
+                            st.session_state.X_test = X_test
+                            st.session_state.y_train = y_train
+                            st.session_state.y_test = y_test
+                            
+                            # Keep the categorical mappings from encoding phase (already stored in session state)
+                            
+                            progress_placeholder.empty()
+                            st.success(f"✅ Model trained successfully! ({model_name})")
+                            st.info(f"Training set: {len(X_train)} samples | Test set: {len(X_test)} samples")
                         
                     except Exception as e:
                         st.error(f"❌ Error training model: {str(e)}")
@@ -798,69 +1190,6 @@ if file:
                     st.error(f"❌ Could not generate confusion matrix: {str(e)}")
                 
                 st.markdown("---")
-                st.markdown("#### 📈 ROC Curve")
-                try:
-                    # Check if binary classification
-                    unique_classes = np.unique(y_test_class)
-                    if len(unique_classes) == 2:
-                        # Get prediction probabilities
-                        if hasattr(model, 'predict_proba'):
-                            y_proba = model.predict_proba(X_test)[:, 1]
-                        else:
-                            y_proba = model.decision_function(X_test)
-                        
-                        # Calculate ROC curve
-                        fpr, tpr, _ = roc_curve(y_test_class, y_proba)
-                        roc_auc = auc(fpr, tpr)
-                        
-                        # Plot ROC curve
-                        fig_roc = go.Figure()
-                        
-                        # ROC curve
-                        fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines',
-                                                    name=f'ROC Curve (AUC = {roc_auc:.4f})',
-                                                    line=dict(color='#0ea5e9', width=3)))
-                        
-                        # Diagonal line (random classifier)
-                        fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines',
-                                                    name='Random Classifier',
-                                                    line=dict(color='#f43f5e', width=2, dash='dash')))
-                        
-                        fig_roc.update_layout(
-                            title=f'ROC Curve (AUC = {roc_auc:.4f})',
-                            xaxis_title='False Positive Rate',
-                            yaxis_title='True Positive Rate',
-                            template='plotly_dark',
-                            height=500,
-                            hovermode='closest'
-                        )
-                        
-                        st.plotly_chart(fig_roc, use_container_width=True)
-                        st.metric("AUC Score", f"{roc_auc:.4f}")
-                        
-                        # AUC Interpretation Table
-                        st.markdown("#### 📊 AUC Interpretation")
-                        auc_interpretation = pd.DataFrame({
-                            'AUC Value': ['1.0', '0.9+', '0.7–0.8', '0.5'],
-                            'Meaning': ['Perfect model 🔥', 'Excellent', 'Good', 'Random (bad ❌)']
-                        })
-                        st.table(auc_interpretation)
-                        
-                        # Show current model's AUC category
-                        if roc_auc >= 0.9:
-                            category = "Excellent 🚀"
-                        elif roc_auc >= 0.7:
-                            category = "Good ✅"
-                        elif roc_auc >= 0.5:
-                            category = "Random ⚠️"
-                        else:
-                            category = "Very Bad ❌"
-                        
-                        st.success(f"Your model's AUC ({roc_auc:.4f}) is: **{category}**")
-                    else:
-                        st.info("ℹ️ ROC Curve available only for binary classification (2 classes)")
-                except Exception as e:
-                    st.error(f"❌ Could not generate ROC Curve: {str(e)}")
                 
                 # Misclassified Samples
                 st.markdown("#### 🔍 Misclassified Samples")
@@ -933,6 +1262,124 @@ if file:
                     st.error(f"❌ Could not generate Residual plot: {str(e)}")
             
             st.markdown("---")
+            
+            # Model-specific visualizations
+            st.markdown("#### 🎨 Model Visualization")
+            
+            model_type = type(model).__name__
+            
+            try:
+                if 'DecisionTree' in model_type:
+                    # Decision Tree Visualization with depth customization
+                    st.markdown("**Decision Tree Structure:**")
+                    from sklearn.tree import plot_tree
+                    import matplotlib.pyplot as plt
+                    
+                    # Add depth limit control
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        max_tree_depth = st.slider(
+                            "Maximum Tree Depth to Display",
+                            min_value=1,
+                            max_value=min(model.get_depth(), 20),
+                            value=min(model.get_depth(), 10),
+                            help="Limit visualization depth to see higher-level patterns"
+                        )
+                    with col2:
+                        st.metric("Tree Statistics", f"Depth: {model.get_depth()} | Leaves: {model.get_n_leaves()}")
+                    
+                    fig, ax = plt.subplots(figsize=(20, 10))
+                    plot_tree(model, feature_names=st.session_state.feature_names, 
+                             filled=True, ax=ax, rounded=True, fontsize=10,
+                             max_depth=max_tree_depth)
+                    st.pyplot(fig)
+                    
+                elif 'RandomForest' in model_type:
+                    # Random Forest - Show tree with customization
+                    st.markdown("**Random Forest - Tree Visualization:**")
+                    from sklearn.tree import plot_tree
+                    import matplotlib.pyplot as plt
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        tree_index = st.slider(
+                            "Select Tree to Visualize",
+                            min_value=0,
+                            max_value=min(model.n_estimators - 1, 49),
+                            value=0,
+                            help="Choose which tree from the forest to display"
+                        )
+                    with col2:
+                        max_tree_depth = st.slider(
+                            "Maximum Tree Depth",
+                            min_value=1,
+                            max_value=20,
+                            value=10,
+                            help="Limit visualization depth"
+                        )
+                    with col3:
+                        st.metric("Forest Info", f"Trees: {model.n_estimators}")
+                    
+                    # Plot selected tree
+                    fig, ax = plt.subplots(figsize=(20, 10))
+                    plot_tree(model.estimators_[tree_index], feature_names=st.session_state.feature_names,
+                             filled=True, ax=ax, rounded=True, fontsize=8,
+                             max_depth=max_tree_depth)
+                    st.pyplot(fig)
+                    
+                    st.info(f"🌲 **Showing Tree #{tree_index + 1}** of {model.n_estimators} trees in the forest")
+                
+                elif 'LogisticRegression' in model_type:
+                    # Logistic Regression - ROC Curve for binary classification
+                    if task_type == 'Classification':
+                        st.markdown("**ROC Curve (Logistic Regression):**")
+                        from sklearn.metrics import roc_curve, auc
+                        
+                        unique_classes = np.unique(y_test)
+                        if len(unique_classes) == 2:
+                            y_pred_proba = model.predict_proba(X_test)[:, 1]
+                            fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+                            roc_auc = auc(fpr, tpr)
+                            
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', 
+                                                    name=f'ROC Curve (AUC = {roc_auc:.4f})',
+                                                    line=dict(color='#58a6ff', width=3)))
+                            fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines',
+                                                    name='Random Classifier',
+                                                    line=dict(color='#8b949e', dash='dash')))
+                            
+                            fig.update_layout(title='ROC Curve - Logistic Regression',
+                                            xaxis_title='False Positive Rate',
+                                            yaxis_title='True Positive Rate',
+                                            template='plotly_dark',
+                                            hovermode='closest',
+                                            height=500)
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info(f"ℹ️ ROC Curve is available for binary classification only.")
+                
+                elif 'LinearRegression' in model_type:
+                    # Linear Regression - Coefficients
+                    st.markdown("**Linear Regression Coefficients:**")
+                    coef_df = pd.DataFrame({
+                        'Feature': st.session_state.feature_names,
+                        'Coefficient': model.coef_
+                    }).sort_values('Coefficient', key=abs, ascending=False)
+                    
+                    fig = px.bar(coef_df, x='Coefficient', y='Feature', orientation='h',
+                               template="plotly_dark", color='Coefficient',
+                               color_continuous_scale="RdBu",
+                               title="Linear Regression Coefficients")
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.metric("Intercept", f"{model.intercept_:.4f}")
+                
+            except Exception as e:
+                st.info(f"ℹ️ Model visualization not available for this model type: {str(e)}")
+            
+            st.markdown("---")
             if hasattr(model, 'feature_importances_'):
                 st.markdown("#### 🎯 Feature Importance")
                 try:
@@ -958,80 +1405,291 @@ if file:
             
             if prediction_mode == "Manual Input":
                 st.markdown("#### Manual Input Fields")
-                st.caption("Enter values for each feature")
+                st.info(f"ℹ️ Enter values exactly as they appear in the original dataset. They will be automatically preprocessed before prediction.")
+                
+                # Detect categorical features from original dataset
+                # Priority 1: Check original_df_for_ref columns (most reliable)
+                all_categorical = []
+                if "original_df_for_ref" in st.session_state:
+                    all_categorical = st.session_state.original_df_for_ref.select_dtypes(include=['object', 'category']).columns.tolist()
+                
+                # Priority 2: Fall back to stored categorical_mappings
+                if not all_categorical and st.session_state.categorical_mappings:
+                    all_categorical = list(st.session_state.categorical_mappings.keys())
+                
+                # Priority 3: Fall back to original_feature_types
+                if not all_categorical and "original_feature_types" in st.session_state:
+                    all_categorical = st.session_state.original_feature_types.get('categorical', [])
+                
+                # DEBUG: Show what was detected
+                with st.expander("🔍 DEBUG: Feature Detection", expanded=True):
+                    st.write("**Categorical Mappings:**")
+                    st.write(st.session_state.categorical_mappings)
+                    st.write("\n**Original Feature Types:**")
+                    st.write(st.session_state.original_feature_types if "original_feature_types" in st.session_state else "NOT SET")
+                    st.write(f"\n**All Features:** {st.session_state.feature_names}")
+                    st.write(f"\n**Detected Categorical (from original_df):** {all_categorical}")
+                
+                # Get unique values from original data for each categorical feature
+                categorical_options = {}
+                for feat in st.session_state.feature_names:
+                    if feat in all_categorical and "original_df_for_ref" in st.session_state:
+                        try:
+                            unique_vals = sorted(st.session_state.original_df_for_ref[feat].unique().tolist())
+                            categorical_options[feat] = unique_vals
+                        except:
+                            pass
+                
+                # Show preprocessing pipeline info
+                st.markdown("**📋 Applied Preprocessing:**")
+                preprocess_cols = st.columns(3)
+                with preprocess_cols[0]:
+                    if st.session_state.categorical_mappings:
+                        st.caption(f"✅ Categorical Encoding: {len(st.session_state.categorical_mappings)} features")
+                    else:
+                        st.caption("⭕ Categorical Encoding: None")
+                with preprocess_cols[1]:
+                    if "scaler" in st.session_state and st.session_state.scaler is not None:
+                        st.caption(f"✅ Scaling: {st.session_state.scaling_method}")
+                    else:
+                        st.caption("⭕ Scaling: None")
+                with preprocess_cols[2]:
+                    st.caption(f"📊 Features: {len(st.session_state.feature_names)}")
+                
+                # Display feature info table with proper type detection
+                feature_info_list = []
+                for feature in st.session_state.feature_names:
+                    if feature in categorical_options:
+                        num_options = len(categorical_options[feature])
+                        feature_info_list.append({
+                            'Feature': feature, 
+                            'Type': 'Categorical', 
+                            'Input': 'Dropdown',
+                            'Unique Values': num_options,
+                            'Example': str(categorical_options[feature][0]) if categorical_options[feature] else 'N/A'
+                        })
+                    else:
+                        feature_info_list.append({
+                            'Feature': feature, 
+                            'Type': 'Numeric', 
+                            'Input': 'Number Input',
+                            'Unique Values': 'Any',
+                            'Example': 'e.g., 25'
+                        })
+                
+                feature_info = pd.DataFrame(feature_info_list)
+                st.dataframe(feature_info, use_container_width=True, hide_index=True)
+                
+                st.markdown("**📝 Input all feature values below:**")
                 
                 input_data = {}
                 cols = st.columns(2)
                 
                 for idx, feature in enumerate(st.session_state.feature_names):
                     with cols[idx % 2]:
-                        input_data[feature] = st.number_input(f"{feature}", value=0.0, key=f"input_{feature}")
-                
-                if st.button("🔮 Predict", key="predict_manual"):
-                    try:
-                        # Create dataframe from input
-                        pred_input = pd.DataFrame([input_data])
-                        
-                        # Make prediction
-                        prediction = model.predict(pred_input)[0]
-                        
-                        if task_type == 'Classification':
-                            if hasattr(model, 'predict_proba'):
-                                probabilities = model.predict_proba(pred_input)[0]
-                                st.success(f"✅ **Prediction: {prediction}**")
-                                
-                                # Show probabilities
-                                prob_df = pd.DataFrame({
-                                    'Class': np.unique(y_test),
-                                    'Probability': probabilities
-                                })
-                                st.dataframe(prob_df, use_container_width=True)
-                            else:
-                                st.success(f"✅ **Prediction: {prediction}**")
+                        if feature in categorical_options:
+                            # Categorical input - dropdown with original values
+                            selected_val = st.selectbox(
+                                label=f"{feature} (Categorical)",
+                                options=categorical_options[feature],
+                                help=f"Select from available values",
+                                key=f"input_{feature}"
+                            )
+                            input_data[feature] = selected_val
                         else:
-                            st.success(f"✅ **Predicted Value: {prediction:.4f}**")
-                    
-                    except Exception as e:
-                        st.error(f"❌ Prediction error: {str(e)}")
+                            # Numeric input
+                            min_val = st.session_state.X_test[feature].min()
+                            max_val = st.session_state.X_test[feature].max()
+                            avg_val = st.session_state.X_test[feature].mean()
+                            
+                            input_data[feature] = st.number_input(
+                                label=f"{feature} (Numeric)",
+                                value=float(avg_val),
+                                help=f"Range in training data: {min_val:.2f} to {max_val:.2f}",
+                                key=f"input_{feature}"
+                            )
+                
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    if st.button("🔮 Predict", key="predict_manual"):
+                        try:
+                            # Create dataframe from input (with original values)
+                            pred_input = pd.DataFrame([input_data])
+                            
+                            # Apply same preprocessing as training data
+                            # Step 1: Encode categorical features using stored mappings
+                            if st.session_state.categorical_mappings:
+                                for feature, mapping in st.session_state.categorical_mappings.items():
+                                    if feature in pred_input.columns:
+                                        original_val = pred_input[feature].iloc[0]
+                                        # Convert using the mapping: original value → numeric
+                                        numeric_val = mapping.get(str(original_val), original_val)
+                                        pred_input[feature] = numeric_val
+                            
+                            # Step 2: Apply scaling to numeric features using stored scaler
+                            if "scaler" in st.session_state and st.session_state.scaler is not None:
+                                numeric_cols = st.session_state.numeric_columns_for_scaling
+                                if numeric_cols:
+                                    cols_to_scale = [col for col in numeric_cols if col in pred_input.columns]
+                                    if cols_to_scale:
+                                        pred_input[cols_to_scale] = st.session_state.scaler.transform(pred_input[cols_to_scale])
+                            
+                            # Make prediction
+                            prediction = model.predict(pred_input)[0]
+                            
+                            if task_type == 'Classification':
+                                if hasattr(model, 'predict_proba'):
+                                    probabilities = model.predict_proba(pred_input)[0]
+                                    st.success(f"✅ **Prediction: {int(prediction)}**")
+                                    
+                                    # Show probabilities as bar chart
+                                    prob_df = pd.DataFrame({
+                                        'Class': [str(int(c)) for c in np.unique(y_test)],
+                                        'Probability': probabilities
+                                    })
+                                    st.dataframe(prob_df, use_container_width=True)
+                                    
+                                    fig = px.bar(prob_df, x='Class', y='Probability', 
+                                               template="plotly_dark", color_discrete_sequence=['#58a6ff'],
+                                               title="Prediction Confidence by Class")
+                                    st.plotly_chart(fig, use_container_width=True)
+                                else:
+                                    st.success(f"✅ **Prediction: {int(prediction)}**")
+                            else:
+                                st.success(f"✅ **Predicted Value: {prediction:.4f}**")
+                        
+                        except Exception as e:
+                            st.error(f"❌ Prediction error: {str(e)}")
+                
+                with col2:
+                    st.markdown("**Input Summary:**")
+                    st.caption(f"✅ Total features: {len(st.session_state.feature_names)}")
+                    st.caption(f"✅ Categorical: {len(categorical_options)} features")
+                    st.caption(f"📊 Numeric: {len(st.session_state.feature_names) - len(categorical_options)} features")
+                    st.caption("💡 Tip: Values outside training range may give unusual predictions")
             
             else:
                 st.markdown("#### Upload Dataset for Batch Predictions")
+                
+                with st.expander("📋 **What format should my CSV have?**", expanded=True):
+                    st.markdown("**Required CSV Format:**")
+                    st.info(f"Your CSV file must contain the exact same column names and original values as in your dataset.")
+                    
+                    # Detect categorical features from original dataset (same priority logic as manual input)
+                    all_categorical_features = []
+                    if "original_df_for_ref" in st.session_state:
+                        all_categorical_features = st.session_state.original_df_for_ref.select_dtypes(include=['object', 'category']).columns.tolist()
+                    
+                    if not all_categorical_features and st.session_state.categorical_mappings:
+                        all_categorical_features = list(st.session_state.categorical_mappings.keys())
+                    
+                    if not all_categorical_features and "original_feature_types" in st.session_state:
+                        all_categorical_features = st.session_state.original_feature_types.get('categorical', [])
+                    
+                    cols_display_list = []
+                    for col in st.session_state.feature_names:
+                        if col in all_categorical_features and "original_df_for_ref" in st.session_state:
+                            try:
+                                unique_vals = st.session_state.original_df_for_ref[col].unique().tolist()
+                                columns_dict = {
+                                    'Column Name': col,
+                                    'Data Type': 'Categorical',
+                                    'Unique Values': len(unique_vals),
+                                    'Example': str(unique_vals[0]) if unique_vals else 'N/A',
+                                    'Required': '✅ Yes'
+                                }
+                            except:
+                                columns_dict = {
+                                    'Column Name': col,
+                                    'Data Type': 'Categorical',
+                                    'Unique Values': '?',
+                                    'Example': 'See dataset',
+                                    'Required': '✅ Yes'
+                                }
+                        else:
+                            columns_dict = {
+                                'Column Name': col,
+                                'Data Type': 'Numeric',
+                                'Unique Values': 'Any',
+                                'Example': 'e.g., 25',
+                                'Required': '✅ Yes'
+                            }
+                        cols_display_list.append(columns_dict)
+                    
+                    cols_display = pd.DataFrame(cols_display_list)
+                    st.dataframe(cols_display, use_container_width=True, hide_index=True)
+                    
+                    st.markdown("**Example CSV Format:**")
+                    st.info("Use original values from your dataset, not preprocessed/numeric values:")
+                    example_rows = {}
+                    for col in st.session_state.feature_names[:min(3, len(st.session_state.feature_names))]:
+                        if col in all_categorical_features and "original_df_for_ref" in st.session_state:
+                            try:
+                                unique_vals = st.session_state.original_df_for_ref[col].unique().tolist()
+                                example_rows[col] = str(unique_vals[0])
+                            except:
+                                example_rows[col] = 'N/A'
+                        else:
+                            example_rows[col] = st.session_state.X_test[col].mean()
+                    if len(st.session_state.feature_names) > 3:
+                        st.caption("(showing first 3 features)")
+                    st.code(pd.DataFrame([example_rows]).to_csv(index=False), language="csv")
+                
+                st.markdown("**Upload your CSV file:**")
                 uploaded_pred_file = st.file_uploader("Upload CSV File", type=["csv"], key="pred_upload")
                 
                 if uploaded_pred_file is not None:
                     try:
                         pred_df = pd.read_csv(uploaded_pred_file)
                         
+                        st.info(f"📊 Loaded {len(pred_df)} rows with {len(pred_df.columns)} columns")
+                        
                         # Validate columns
                         missing_cols = set(st.session_state.feature_names) - set(pred_df.columns)
+                        extra_cols = set(pred_df.columns) - set(st.session_state.feature_names)
+                        
                         if missing_cols:
-                            st.error(f"❌ Missing columns: {missing_cols}")
+                            st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
                         else:
+                            if extra_cols:
+                                st.warning(f"⚠️ Extra columns will be ignored: {', '.join(extra_cols)}")
+                            
+                            st.success("✅ CSV format is valid!")
                             # Select only required features
-                            pred_df_subset = pred_df[st.session_state.feature_names]
+                            pred_df_subset = pred_df[st.session_state.feature_names].copy()
+                            
+                            # Apply encoding to the data (without showing conversion info)
+                            if st.session_state.categorical_mappings:
+                                for feature in st.session_state.categorical_mappings:
+                                    if feature in pred_df_subset.columns:
+                                        pred_df_subset[feature] = pred_df_subset[feature].astype(str).map(st.session_state.categorical_mappings[feature])
                             
                             if st.button("🔮 Predict All", key="predict_batch"):
-                                # Make predictions
-                                predictions = model.predict(pred_df_subset)
+                                try:
+                                    # Make predictions
+                                    predictions = model.predict(pred_df_subset)
+                                    
+                                    # Create results dataframe
+                                    results_df = pred_df.copy()
+                                    results_df['Prediction'] = predictions
+                                    
+                                    if task_type == 'Classification' and hasattr(model, 'predict_proba'):
+                                        probabilities = model.predict_proba(pred_df_subset)
+                                        for i, class_label in enumerate(np.unique(y_test)):
+                                            results_df[f'Prob_{class_label}'] = probabilities[:, i]
+                                    
+                                    st.success(f"✅ Predictions Complete! ({len(predictions)} samples)")
+                                    st.dataframe(results_df, use_container_width=True)
+                                    
+                                    # Download button
+                                    csv = results_df.to_csv(index=False).encode('utf-8')
+                                    st.download_button("📥 Download Predictions", csv, "predictions.csv", "text/csv")
                                 
-                                # Create results dataframe
-                                results_df = pred_df.copy()
-                                results_df['Prediction'] = predictions
-                                
-                                if task_type == 'Classification' and hasattr(model, 'predict_proba'):
-                                    probabilities = model.predict_proba(pred_df_subset)
-                                    for i, class_label in enumerate(np.unique(y_test)):
-                                        results_df[f'Prob_{class_label}'] = probabilities[:, i]
-                                
-                                st.success(f"✅ Predictions Complete! ({len(predictions)} samples)")
-                                st.dataframe(results_df, use_container_width=True)
-                                
-                                # Download button
-                                csv = results_df.to_csv(index=False).encode('utf-8')
-                                st.download_button("📥 Download Predictions", csv, "predictions.csv", "text/csv")
+                                except Exception as e:
+                                    st.error(f"❌ Prediction error: {str(e)}")
                     
                     except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
+                        st.error(f"❌ Error loading file: {str(e)}")
 
 
     # =========================
