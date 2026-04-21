@@ -2,22 +2,23 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 import pickle
-
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder
+import inspect
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder, label_binarize
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix, roc_curve, auc
-from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import label_binarize
-from sklearn.cluster import KMeans, DBSCAN
-import plotly.graph_objects as go
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.svm import SVC, SVR
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_curve, auc
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, silhouette_score
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Data Preprocessing & EDA Suite", layout="wide")
+st.set_page_config(page_title="Antigravity AI | Data Suite", layout="wide", page_icon="🚀")
 
 # =========================
 # HELPER FUNCTIONS
@@ -45,309 +46,164 @@ def get_models_by_task(task_type):
         return {
             'Logistic Regression': LogisticRegression(max_iter=1000),
             'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),
-            'Decision Tree': DecisionTreeClassifier(random_state=42)
+            'Decision Tree': DecisionTreeClassifier(random_state=42),
+            'KNN': KNeighborsClassifier(),
+            'SVM': SVC(probability=True)
         }
-    else:
+    elif task_type == 'Regression':
         return {
             'Linear Regression': LinearRegression(),
             'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
-            'Decision Tree': DecisionTreeRegressor(random_state=42)
+            'Decision Tree': DecisionTreeRegressor(random_state=42),
+            'KNN': KNeighborsRegressor(),
+            'SVM': SVR()
+        }
+    else: # Clustering
+        return {
+            'K-Means': KMeans(n_clusters=3, random_state=42, n_init=10)
         }
 
 
 # Custom CSS for Modern Design (Dark sleek theme with improved contrast)
 st.markdown("""
     <style>
-    /* Main app background */
-    .stApp {
-        background-color: #0d1117;
-        color: #e6edf3;
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;600&display=swap');
+
+    /* Global Styles */
+    :root {
+        --primary: #8b5cf6;
+        --secondary: #6366f1;
+        --bg-main: #0a1128;
+        --bg-sidebar: #050505;
+        --bg-glass: rgba(15, 23, 42, 0.7);
+        --border-glass: rgba(139, 92, 246, 0.3);
+        --text-main: #f8fafc;
+        --text-dim: #94a3b8;
+        
+        /* Force Streamlit Theme Variables */
+        --primary-color: #8b5cf6;
+        --background-color: #0a1128;
+        --secondary-background-color: #050505;
+        --text-color: #f8fafc;
+        --font: 'Inter', sans-serif;
     }
-    
-    /* Modify sidebar with better contrast */
+
+    /* THEME LOCK: Force Dark Mode even if user is in Light Mode */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"] {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+    }
+
     [data-testid="stSidebar"] {
-        background-color: #161b22;
-        border-right: 1px solid #30363d;
+        background-color: var(--bg-sidebar) !important;
+        border-right: 1px solid var(--border-glass) !important;
     }
     
-    /* Headers - Improved contrast */
-    h1 {
-        color: #58a6ff !important;
-        font-family: 'Inter', sans-serif;
-        font-weight: 700 !important;
-        letter-spacing: -0.5px;
+    header[data-testid="stHeader"] {
+        background-color: var(--bg-main) !important;
+    }
+
+    .stApp {
+        background-color: var(--bg-main) !important;
+    }
+
+    /* Force all text elements to be light */
+    .stMarkdown, p, span, label, li, h1, h2, h3, h4, h5, h6, .stMetric, [data-testid="stExpander"] {
+        color: var(--text-main) !important;
+    }
+
+    /* Table/DataFrame Styling Overrides */
+    [data-testid="stTable"], [data-testid="stDataFrame"], .stTable, .stDataFrame {
+        background-color: rgba(255, 255, 255, 0.02) !important;
+        color: var(--text-main) !important;
     }
     
-    h2 {
-        color: #58a6ff !important;
-        font-family: 'Inter', sans-serif;
-        font-weight: 700 !important;
-        border-bottom: 2px solid #30363d;
-        padding-bottom: 10px;
-    }
-    
-    h3, h4, h5, h6 {
-        color: #79c0ff !important;
-        font-family: 'Inter', sans-serif;
-        font-weight: 700 !important;
-    }
-    
-    /* Main text - Better contrast */
-    p, span, div {
-        color: #e6edf3 !important;
-    }
-    
-    /* Metric labels - Enhanced visibility with better contrast */
-    [data-testid="metric-container"] {
-        background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(79, 195, 247, 0.05) 100%);
-        border-left: 4px solid #58a6ff;
-        border-radius: 8px;
-        padding: 12px !important;
-    }
-    
-    [data-testid="metric-container"] label {
-        color: #79c0ff !important;
-        font-weight: 700 !important;
-        font-size: 13px !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    [data-testid="metric-container"] div {
-        color: #f0f6fc !important;
-        font-weight: 600 !important;
-        font-size: 24px !important;
-    }
-    
-    /* Markdown text enhancement */
-    .markdown-text-container {
-        color: #e6edf3 !important;
-    }
-    
-    /* Caption styling - Improved contrast */
-    .stCaption {
-        color: #8b949e !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Buttons - Better visual feedback */
-    div.stButton > button:first-child {
-        background: linear-gradient(135deg, #0969da 0%, #0860ca 100%);
-        color: #000000 !important;
-        border: 1px solid #1f6feb !important;
-        border-radius: 8px;
-        font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    }
-    
-    div.stButton > button:first-child:hover {
-        background: linear-gradient(135deg, #0860ca 0%, #073a99 100%);
-        color: #000000 !important;
-        border: 1px solid #58a6ff !important;
-        box-shadow: 0 3px 12px rgba(9, 105, 218, 0.4);
-        transform: translateY(-1px);
-    }
-    
-    /* Style st.info boxes */
-    .stAlert {
-        border-radius: 8px;
-        border: 1px solid #30363d;
-        background-color: rgba(88, 166, 255, 0.05) !important;
-        backdrop-filter: blur(10px);
-    }
-    
-    .stAlert > div {
-        color: #e6edf3 !important;
-    }
-    
-    /* Sidebar text contrast */
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] div {
-        color: #e6edf3 !important;
-    }
-    
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #79c0ff !important;
-    }
-    
-    /* Radio and checkbox labels */
-    [data-testid="stRadio"] label, [data-testid="stCheckbox"] label {
-        color: #e6edf3 !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Input field styling */
-    input, select, textarea {
-        background-color: #0d1117 !important;
-        color: #e6edf3 !important;
-        border: 1px solid #30363d !important;
-    }
-    
-    input:focus, select:focus, textarea:focus {
-        border-color: #58a6ff !important;
-        box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1) !important;
-    }
-    
-    /* Selectbox text color */
-    [data-testid="stSelectbox"] label {
-        color: #e6edf3 !important;
-    }
-    
-    [data-baseweb="select"] div {
-        color: #e6edf3 !important;
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: transparent;
-        border: 1px solid #30363d;
-        border-radius: 6px;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background-color: rgba(88, 166, 255, 0.05);
-    }
-    
-    /* Streamlit tabs styling */
-    [data-baseweb="tab"] {
-        color: #8b949e !important;
-    }
-    
-    [data-baseweb="tab"][aria-selected="true"] {
-        color: #58a6ff !important;
-        border-bottom: 2px solid #58a6ff;
-    }
-    
-    /* Dataframe styling */
-    [data-testid="stDataFrame"] {
-        border: 1px solid #30363d !important;
+    /* Navigation Step Buttons */
+    div[role="radiogroup"] label[data-baseweb="radio"] {
+        background-color: rgba(139, 92, 246, 0.05) !important;
+        border: 1px solid rgba(139, 92, 246, 0.1) !important;
         border-radius: 8px !important;
+        padding: 5px 12px !important;
+        margin-bottom: 6px !important;
     }
-    
-    /* Success and warning alerts */
-    .stSuccess {
-        background-color: rgba(3, 102, 214, 0.1) !important;
-        color: #58a6ff !important;
+
+    div[role="radiogroup"] label[data-baseweb="radio"]:hover {
+        border-color: var(--primary) !important;
+        background-color: rgba(139, 92, 246, 0.15) !important;
     }
-    
-    .stWarning {
-        background-color: rgba(187, 128, 9, 0.1) !important;
-        color: #d29922 !important;
+
+    /* Metric Boxes Glassmorphism */
+    div[data-testid="stMetricContainer"] {
+        background: var(--bg-glass) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid var(--border-glass) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.4) !important;
     }
-    
-    /* File uploader styling */
-    [data-testid="stFileUploader"] {
-        background-color: rgba(88, 166, 255, 0.08) !important;
-        border: 2px dashed #58a6ff !important;
-        border-radius: 8px !important;
-        padding: 20px !important;
+
+    /* Title & Header Gradients */
+    h1, h2, h3 {
+        font-family: 'Outfit', sans-serif !important;
+        background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        font-weight: 700 !important;
     }
-    
-    [data-testid="stFileUploader"] label {
-        color: #79c0ff !important;
-        font-weight: 600 !important;
-        font-size: 15px !important;
-    }
-    
-    [data-testid="stFileUploaderDropzone"] {
-        background-color: transparent !important;
-    }
-    
-    [data-testid="stFileUploaderDropzone"] button {
-        background-color: #0969da !important;
-        color: #000000 !important;
+
+    /* Button Styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+        color: white !important;
         border: none !important;
+        padding: 0.6rem 1.5rem !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
-        padding: 10px 20px !important;
-        border-radius: 6px !important;
+        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3) !important;
     }
-    
-    [data-testid="stFileUploaderDropzone"] button:hover {
-        background-color: #0860ca !important;
-        box-shadow: 0 2px 8px rgba(9, 105, 218, 0.4) !important;
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5) !important;
+        filter: brightness(1.1);
     }
-    
-    /* Dropdown menu styling */
-    [data-baseweb="menu"] li div {
-        color: #e6edf3 !important;
+
+    /* Input Fields */
+    .stTextInput input, .stSelectbox [data-baseweb="select"], .stNumberInput input {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid var(--border-glass) !important;
+        border-radius: 10px !important;
+        color: white !important;
     }
-    
-    [data-baseweb="menu"] {
-        background-color: #1c2128 !important;
-    }
-    
-    [data-baseweb="listbox"] li {
-        color: #e6edf3 !important;
-        background-color: #161b22 !important;
-    }
-    
-    /* Multiselect and option styling - Fix all dropdown items */
-    [role="option"] {
-        color: #e6edf3 !important;
-        background-color: #161b22 !important;
-    }
-    
-    [role="option"]:hover {
-        background-color: #0d419f !important;
-    }
-    
-    /* Streamlit multiselect tokens/tags */
-    [data-testid="stMultiSelect"] div {
-        color: #e6edf3 !important;
-    }
-    
-    [data-testid="stMultiSelect"] [data-baseweb="tag"] {
-        background-color: #0969da !important;
-        color: #ffffff !important;
-    }
-    
-    /* All option/select elements */
-    option {
-        background-color: #161b22 !important;
-        color: #e6edf3 !important;
-    }
-    
-    optgroup {
-        background-color: #161b22 !important;
-        color: #e6edf3 !important;
-    }
-    
-    /* Ensure all text in popovers and menus is visible */
-    [data-baseweb="popover"] {
-        background-color: #1c2128 !important;
-        color: #e6edf3 !important;
-    }
-    
-    [data-baseweb="popover"] * {
-        color: #e6edf3 !important;
-    }
-    
-    /* List items in menus */
-    [data-baseweb="menu"] li {
-        background-color: #1c2128 !important;
-    }
-    
-    [data-baseweb="menu"] li:hover {
-        background-color: #0d419f !important;
-    }
-    
-    /* Download button styling */
-    div.stDownloadButton > button:first-child {
-        background: linear-gradient(135deg, #0969da 0%, #0860ca 100%);
-        color: #000000 !important;
-        border: 1px solid #1f6feb !important;
-        border-radius: 8px;
+
+    /* Tabs */
+    button[data-baseweb="tab"] {
+        font-family: 'Outfit', sans-serif !important;
         font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Custom Cards for Predictions */
+    .prediction-card {
+        background: linear-gradient(135deg, rgba(88, 166, 255, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+        border: 1px solid var(--primary);
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .prediction-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin: 10px 0;
+        text-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
     }
     
-    div.stDownloadButton > button:first-child:hover {
-        background: linear-gradient(135deg, #0860ca 0%, #073a99 100%);
-        color: #000000 !important;
-        border: 1px solid #58a6ff !important;
-        box-shadow: 0 3px 12px rgba(9, 105, 218, 0.4);
-        transform: translateY(-1px);
+    /* Toast Styling */
+    [data-testid="stToast"] {
+        background: var(--bg-glass) !important;
+        border: 1px solid var(--primary) !important;
+        color: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -476,7 +332,7 @@ if file:
             st.subheader("Distribution Plot")
             dist_col = st.selectbox("Select Numeric Column", num_cols, key="dist")
             if st.button("Show Distribution"):
-                fig = px.histogram(df, x=dist_col, marginal="box", template="plotly_dark", color_discrete_sequence=['#38bdf8'])
+                fig = px.histogram(df, x=dist_col, marginal="box", template="plotly_dark", color_discrete_sequence=['#8b5cf6'])
                 st.plotly_chart(fig, use_container_width=True, config=chart_cfg)
 
         with c2:
@@ -493,7 +349,7 @@ if file:
                     scatter_df.columns = [scat_x, scat_y]
                     fig = px.scatter(scatter_df, x=scat_x, y=scat_y, 
                                      template="plotly_dark", 
-                                     color_discrete_sequence=['#a855f7'])
+                                     color_discrete_sequence=['#c084fc'])
                     st.plotly_chart(fig, use_container_width=True, config=chart_cfg)
                 
         st.markdown("---")
@@ -808,7 +664,12 @@ if file:
                 
                 st.markdown("---")
                 st.markdown("#### Step 4: Select Task Type")
-                task_type = st.selectbox("Choose Task Type", ["Classification", "Regression"], key="task_type_select")
+                task_type_opts = ["Classification", "Regression", "Clustering"]
+                # Default to detecting supervised task, but allow manual Clustering
+                detected = detect_task_type(y)
+                default_idx = task_type_opts.index(detected) if detected in task_type_opts else 0
+                
+                task_type = st.selectbox("Choose Task Type", task_type_opts, index=default_idx, key="task_type_select")
                 st.session_state.task_type = task_type
                 st.caption(f"Target column '{target_col}' has {y.nunique()} unique values")
                 
@@ -860,70 +721,205 @@ if file:
                 st.markdown("#### Step 7: Model Parameters Customization (Optional)")
                 
                 # Collapsible section for custom parameters
-                with st.expander("⚙️ **Customize Model Parameters** (Leave empty to use defaults)", expanded=False):
-                    st.markdown("**📌 Random Forest Parameters:**")
-                    rf_cols = st.columns(3)
-                    with rf_cols[0]:
-                        rf_n_estimators = st.number_input("Random Forest - n_estimators", min_value=10, max_value=500, value=None, help="Number of trees in forest (default: 100)")
-                    with rf_cols[1]:
-                        rf_max_depth = st.number_input("Random Forest - max_depth", min_value=1, max_value=50, value=None, help="Max depth of tree (default: None)")
-                    with rf_cols[2]:
-                        rf_min_samples = st.number_input("Random Forest - min_samples_split", min_value=2, max_value=20, value=None, help="Min samples to split (default: 2)")
+                with st.expander("⚙️ **Customize Model Parameters**", expanded=False):
+                    custom_params = {}
+                    
+                    if model_name == "Random Forest":
+                        st.markdown("**🌲 Random Forest Parameters:**")
+                        rf_cols = st.columns(3)
+                        with rf_cols[0]:
+                            rf_n_estimators = st.number_input("n_estimators", min_value=10, max_value=1000, value=100, help="Number of trees (default: 100)")
+                            rf_max_features = st.selectbox("max_features", ["sqrt", "log2", None], index=0, help="Features to consider at split (default: 'sqrt')")
+                        with rf_cols[1]:
+                            rf_max_depth = st.number_input("max_depth", min_value=0, max_value=100, value=0, help="Max depth (0 for None)")
+                            rf_min_samples_leaf = st.number_input("min_samples_leaf", min_value=1, max_value=50, value=1, help="Min samples at leaf (default: 1)")
+                        with rf_cols[2]:
+                            rf_min_samples_split = st.number_input("min_samples_split", min_value=2, max_value=50, value=2, help="Min samples to split (default: 2)")
+                            rf_oob_score = st.checkbox("oob_score", value=False, help="Use out-of-bag samples (default: False)")
+                        
+                        custom_params = {
+                            "n_estimators": rf_n_estimators,
+                            "max_depth": rf_max_depth if rf_max_depth > 0 else None,
+                            "min_samples_split": rf_min_samples_split,
+                            "min_samples_leaf": rf_min_samples_leaf,
+                            "max_features": rf_max_features,
+                            "oob_score": rf_oob_score
+                        }
+
+                    elif model_name == "Decision Tree":
+                        st.markdown("**🌳 Decision Tree Parameters:**")
+                        dt_cols = st.columns(2)
+                        with dt_cols[0]:
+                            dt_crit_options = ["gini", "entropy", "log_loss"] if task_type == "Classification" else ["squared_error", "friedman_mse", "absolute_error", "poisson"]
+                            dt_criterion = st.selectbox("criterion", dt_crit_options, index=0)
+                            dt_max_depth = st.number_input("max_depth", min_value=0, max_value=100, value=0, help="Max depth (0 for None)")
+                            dt_max_features = st.selectbox("max_features", [None, "sqrt", "log2"], index=0)
+                        with dt_cols[1]:
+                            dt_splitter = st.selectbox("splitter", ["best", "random"], index=0)
+                            dt_min_samples_split = st.number_input("min_samples_split", min_value=2, max_value=50, value=2)
+                            dt_min_samples_leaf = st.number_input("min_samples_leaf", min_value=1, max_value=50, value=1)
+                        
+                        custom_params = {
+                            "criterion": dt_criterion,
+                            "splitter": dt_splitter,
+                            "max_depth": dt_max_depth if dt_max_depth > 0 else None,
+                            "min_samples_split": dt_min_samples_split,
+                            "min_samples_leaf": dt_min_samples_leaf,
+                            "max_features": dt_max_features
+                        }
+
+                    elif model_name == "Logistic Regression":
+                        st.markdown("**📈 Logistic Regression Parameters:**")
+                        lr_cols = st.columns(2)
+                        with lr_cols[0]:
+                            lr_penalty = st.selectbox("penalty", ["l2", "l1", "elasticnet", None], index=0)
+                            lr_C = st.number_input("C (Regularization strength)", min_value=0.01, max_value=100.0, value=1.0)
+                        with lr_cols[1]:
+                            lr_max_iter = st.number_input("max_iter", min_value=100, max_value=5000, value=1000)
+                            lr_fit_intercept = st.checkbox("fit_intercept", value=True)
+                        lr_multi_class = st.selectbox("multi_class", ["auto", "ovr", "multinomial"], index=0)
+                        
+                        custom_params = {
+                            "penalty": lr_penalty,
+                            "C": lr_C,
+                            "max_iter": lr_max_iter,
+                            "fit_intercept": lr_fit_intercept,
+                            "multi_class": lr_multi_class
+                        }
+
+                    elif model_name == "Linear Regression":
+                         st.markdown("**📏 Linear Regression Parameters:**")
+                         lin_cols = st.columns(2)
+                         with lin_cols[0]:
+                             lin_fit_intercept = st.checkbox("fit_intercept", value=True)
+                         with lin_cols[1]:
+                             lin_positive = st.checkbox("positive", value=False)
+                         
+                         custom_params = {
+                             "fit_intercept": lin_fit_intercept,
+                             "positive": lin_positive
+                         }
+                    
+                    elif model_name == "KNN":
+                        st.markdown("**👥 K-Nearest Neighbors Parameters:**")
+                        knn_cols = st.columns(2)
+                        with knn_cols[0]:
+                            knn_neighbors = st.number_input("n_neighbors", min_value=1, max_value=100, value=5)
+                            knn_weights = st.selectbox("weights", ["uniform", "distance"], index=0)
+                        with knn_cols[1]:
+                            knn_metric = st.selectbox("metric", ["minkowski", "euclidean", "manhattan"], index=0)
+                            knn_leaf_size = st.number_input("leaf_size", min_value=1, max_value=100, value=30)
+                        
+                        custom_params = {
+                            "n_neighbors": knn_neighbors,
+                            "weights": knn_weights,
+                            "metric": knn_metric,
+                            "leaf_size": knn_leaf_size
+                        }
+                    
+                    elif model_name == "SVM":
+                        st.markdown("**🛡️ SVM Parameters:**")
+                        svm_cols = st.columns(2)
+                        with svm_cols[0]:
+                            svm_C = st.number_input("C (Regularization)", min_value=0.01, max_value=100.0, value=1.0)
+                            svm_kernel = st.selectbox("kernel", ["rbf", "linear", "poly", "sigmoid"], index=0)
+                        with svm_cols[1]:
+                            svm_gamma = st.selectbox("gamma", ["scale", "auto"], index=0)
+                            if svm_kernel == "poly":
+                                svm_degree = st.slider("degree (for poly kernel)", 1, 5, 3)
+                            if task_type == "Regression":
+                                svm_epsilon = st.number_input("epsilon", min_value=0.01, max_value=1.0, value=0.1)
+                        
+                        custom_params = {
+                            "C": svm_C,
+                            "kernel": svm_kernel,
+                            "gamma": svm_gamma,
+                            "probability": True if task_type == "Classification" else False
+                        }
+                        if svm_kernel == "poly":
+                            custom_params["degree"] = svm_degree
+                        if task_type == "Regression":
+                            custom_params["epsilon"] = svm_epsilon
+                    
+                    elif model_name == "K-Means":
+                        st.markdown("**🧠 K-Means Clustering Parameters:**")
+                        km_cols = st.columns(2)
+                        with km_cols[0]:
+                            km_n_clusters = st.number_input("n_clusters (k)", min_value=2, max_value=20, value=3)
+                            km_init = st.selectbox("init", ["k-means++", "random"], index=0)
+                        with km_cols[1]:
+                            km_max_iter = st.number_input("max_iter", min_value=100, max_value=1000, value=300)
+                            km_n_init = st.number_input("n_init", min_value=1, max_value=50, value=10)
+                        
+                        custom_params = {
+                            "n_clusters": km_n_clusters,
+                            "init": km_init,
+                            "max_iter": km_max_iter,
+                            "n_init": km_n_init
+                        }
+                        
+                        st.markdown("---")
+                        st.markdown("#### 🎯 Elbow Method (Find Optimal K)")
+                        st.caption("We'll run K-Means for k=1 to 10 and plot the 'Inertia'. Look for the point where the curve starts to flatten (the 'elbow').")
+                        
+                        if st.button("📈 Find Optimal K", key="elbow_btn"):
+                            with st.spinner("Calculating inertia for k=1..10..."):
+                                inertias = []
+                                K_range = range(1, 11)
+                                
+                                # Use a copy of X for calculation
+                                X_elbow = X.copy()
+                                # Quick cleanup for elbow
+                                X_elbow = X_elbow.select_dtypes(include=np.number).fillna(X_elbow.mean(numeric_only=True))
+                                
+                                if X_elbow.empty:
+                                    st.error("❌ No numeric features found for Elbow Method.")
+                                else:
+                                    for k in K_range:
+                                        km_temp = KMeans(n_clusters=k, random_state=42, n_init=5)
+                                        km_temp.fit(X_elbow)
+                                        inertias.append(km_temp.inertia_)
+                                    
+                                    fig_elbow = px.line(x=list(K_range), y=inertias, markers=True, 
+                                                       template="plotly_dark", color_discrete_sequence=['#a78bfa'])
+                                    fig_elbow.update_layout(title="Elbow Method: Inertia vs Number of Clusters", 
+                                                          xaxis_title="Number of Clusters (k)", yaxis_title="Inertia", height=400)
+                                    st.plotly_chart(fig_elbow, use_container_width=True)
+                                    st.info("💡 **Interpretation:** Choose the 'k' where the drop in inertia slows down significantly.")
+                    
                     
                     st.divider()
-                    st.markdown("**📌 Decision Tree Parameters:**")
-                    dt_cols = st.columns(2)
-                    with dt_cols[0]:
-                        dt_max_depth = st.number_input("Decision Tree - max_depth", min_value=1, max_value=50, value=None, help="Max depth of tree (default: None)")
-                    with dt_cols[1]:
-                        dt_min_samples = st.number_input("Decision Tree - min_samples_split", min_value=2, max_value=20, value=None, help="Min samples to split (default: 2)")
-                    
-                    if task_type == "Regression":
-                        st.divider()
-                        st.markdown("**📌 Linear Regression Parameters:**")
-                        st.info("ℹ️ Linear Regression uses default parameters (no customization needed)")
-                    
-                    st.divider()
-                    st.info("💡 **Tip:** Leave fields empty to use default parameters. Custom values override defaults.")
-                
-                # Store custom parameters in session state
-                custom_params = {
-                    "rf_n_estimators": rf_n_estimators,
-                    "rf_max_depth": rf_max_depth if rf_max_depth is not None else None,
-                    "rf_min_samples": rf_min_samples,
-                    "dt_max_depth": dt_max_depth if dt_max_depth is not None else None,
-                    "dt_min_samples": dt_min_samples
-                }
-                
-                st.markdown("---")
+                    st.info("💡 **Tip:** Custom values will be applied to the selected model. Non-customized models will use default parameters.")
                 
                 if st.button("🚀 Train Model", key="train_btn"):
                     # Display selected parameters
                     with st.expander("📋 **Selected Parameters**", expanded=True):
-                        st.markdown("**Custom Parameters to be used:**")
-                        
-                        any_custom = False
-                        if custom_params.get("rf_n_estimators"):
-                            st.info(f"🌲 Random Forest - n_estimators: **{custom_params['rf_n_estimators']}**")
-                            any_custom = True
-                        if custom_params.get("rf_max_depth") is not None:
-                            st.info(f"🌲 Random Forest - max_depth: **{custom_params['rf_max_depth']}**")
-                            any_custom = True
-                        if custom_params.get("rf_min_samples"):
-                            st.info(f"🌲 Random Forest - min_samples_split: **{custom_params['rf_min_samples']}**")
-                            any_custom = True
-                        if custom_params.get("dt_max_depth") is not None:
-                            st.info(f"🌳 Decision Tree - max_depth: **{custom_params['dt_max_depth']}**")
-                            any_custom = True
-                        if custom_params.get("dt_min_samples"):
-                            st.info(f"🌳 Decision Tree - min_samples_split: **{custom_params['dt_min_samples']}**")
-                            any_custom = True
-                        
-                        if not any_custom:
-                            st.success("✅ Using **default parameters** for all models (no custom values set)")
+                        st.markdown(f"**Parameters for {model_name}:**")
+                        if custom_params:
+                            for p_name, p_val in custom_params.items():
+                                st.info(f"🔹 {p_name}: **{p_val}**")
+                        else:
+                            st.success("✅ Using **default parameters**")
                     try:
                         X_for_training = X.copy()
                         progress_placeholder = st.empty()
+                        
+                        # Handle Missing Values (Imputation)
+                        missing_values = X_for_training.isnull().sum().sum()
+                        if missing_values > 0:
+                            progress_placeholder.info(f"🧹 Auto-cleaning: Handling {missing_values} missing values...")
+                            # Fill numeric with mean
+                            num_impute_cols = X_for_training.select_dtypes(include=np.number).columns
+                            if not num_impute_cols.empty:
+                                X_for_training[num_impute_cols] = X_for_training[num_impute_cols].fillna(X_for_training[num_impute_cols].mean())
+                            # Fill categorical with mode
+                            cat_impute_cols = X_for_training.select_dtypes(include=['object', 'category']).columns
+                            for col in cat_impute_cols:
+                                if not X_for_training[col].mode().empty:
+                                    X_for_training[col] = X_for_training[col].fillna(X_for_training[col].mode().iloc[0])
+                                else:
+                                    X_for_training[col] = X_for_training[col].fillna("Unknown")
+                            st.success(f"✅ Data auto-cleaned! Handled {missing_values} missing values.")
                         
                         # Feature Selection: Remove weak features
                         if use_feature_selection:
@@ -983,13 +979,72 @@ if file:
                         else:
                             st.info("ℹ️ No categorical features found in the selected features.")
                         
+                        # =============================================
+                        # BUILD FEATURE PROFILE (HUMAN-READABLE)
+                        # Uses original_df (raw untouched CSV) for real values
+                        # =============================================
+                        raw_df = st.session_state.original_df  # UNTOUCHED raw CSV
+                        feature_profile = {}
+                        
+                        for col in X_for_training.columns:
+                            # Check if this column was originally text/categorical in the RAW CSV
+                            if col in raw_df.columns and raw_df[col].dtype == 'object':
+                                # This is a categorical column - show original text values
+                                raw_vals = sorted([str(v) for v in raw_df[col].dropna().unique().tolist()])
+                                # Build/update mapping from string -> number
+                                if col not in st.session_state.categorical_mappings:
+                                    st.session_state.categorical_mappings[col] = {v: i for i, v in enumerate(raw_vals)}
+                                feature_profile[col] = {
+                                    'type': 'categorical',
+                                    'options': raw_vals,
+                                    'default': raw_vals[0] if raw_vals else ''
+                                }
+                            elif col in st.session_state.categorical_mappings:
+                                # Already have a mapping from the encoding step
+                                options = list(st.session_state.categorical_mappings[col].keys())
+                                feature_profile[col] = {
+                                    'type': 'categorical',
+                                    'options': options,
+                                    'default': options[0] if options else ''
+                                }
+                            else:
+                                # Numeric: pull ORIGINAL ranges from untouched CSV
+                                if col in raw_df.columns:
+                                    col_data = pd.to_numeric(raw_df[col], errors='coerce').dropna()
+                                    feature_profile[col] = {
+                                        'type': 'numeric',
+                                        'min': float(col_data.min()) if len(col_data) > 0 else 0.0,
+                                        'max': float(col_data.max()) if len(col_data) > 0 else 100.0,
+                                        'default': float(col_data.median()) if len(col_data) > 0 else 0.0
+                                    }
+                                else:
+                                    feature_profile[col] = {
+                                        'type': 'numeric', 'min': 0.0, 'max': 100.0, 'default': 0.0
+                                    }
+                        
+                        st.session_state.feature_profile = feature_profile
+                        st.session_state.feature_names_for_prediction = X_for_training.columns.tolist()
+                        
                         # Apply scaling to numeric features if available in session state
                         if "scaler" in st.session_state and st.session_state.scaler is not None:
-                            numeric_cols = st.session_state.numeric_columns_for_scaling
-                            if numeric_cols and any(col in X_for_training.columns for col in numeric_cols):
-                                cols_to_scale = [col for col in numeric_cols if col in X_for_training.columns]
-                                X_for_training[cols_to_scale] = st.session_state.scaler.transform(X_for_training[cols_to_scale])
-                                progress_placeholder.info(f"📊 Applied {st.session_state.scaling_method} scaling to numeric features")
+                            numeric_cols_for_scaling = X_for_training.select_dtypes(include=np.number).columns.tolist()
+                            if numeric_cols_for_scaling:
+                                # Re-fit the scaler on the CURRENT columns to avoid "Feature name mismatch" errors
+                                # if the user changed feature selection since the last transformation step.
+                                try:
+                                    X_for_training[numeric_cols_for_scaling] = st.session_state.scaler.fit_transform(X_for_training[numeric_cols_for_scaling])
+                                    # Update metadata for the prediction engine
+                                    st.session_state.numeric_columns_for_scaling = numeric_cols_for_scaling
+                                    progress_placeholder.info(f"📊 Applied {st.session_state.scaling_method} scaling to {len(numeric_cols_for_scaling)} features")
+                                except Exception as scaling_err:
+                                    st.warning(f"⚠️ Scaler alignment issue: {str(scaling_err)}. Re-initializing scaler...")
+                                    # Fallback: re-initialize and fit
+                                    if st.session_state.scaling_method == "Standardization":
+                                        st.session_state.scaler = StandardScaler()
+                                    else:
+                                        st.session_state.scaler = MinMaxScaler()
+                                    X_for_training[numeric_cols_for_scaling] = st.session_state.scaler.fit_transform(X_for_training[numeric_cols_for_scaling])
+                                    st.session_state.numeric_columns_for_scaling = numeric_cols_for_scaling
                         
                         # Store numeric columns for prediction preprocessing
                         numeric_training_cols = X_for_training.select_dtypes(include=np.number).columns.tolist()
@@ -1007,29 +1062,20 @@ if file:
                         # Function to apply custom parameters to models
                         def apply_custom_params(model_name, model_class, custom_params):
                             """Apply custom parameters to model if provided, otherwise use defaults"""
-                            params = {}
+                            params = custom_params.copy()
                             
-                            if model_name == "Random Forest":
-                                if custom_params.get("rf_n_estimators"):
-                                    params["n_estimators"] = custom_params["rf_n_estimators"]
-                                if custom_params.get("rf_max_depth") is not None:
-                                    params["max_depth"] = custom_params["rf_max_depth"]
-                                if custom_params.get("rf_min_samples"):
-                                    params["min_samples_split"] = custom_params["rf_min_samples"]
-                                params["random_state"] = 42
-                                
-                            elif model_name == "Decision Tree":
-                                if custom_params.get("dt_max_depth") is not None:
-                                    params["max_depth"] = custom_params["dt_max_depth"]
-                                if custom_params.get("dt_min_samples"):
-                                    params["min_samples_split"] = custom_params["dt_min_samples"]
+                            # Safely apply random_state only if supported by the model
+                            sig = inspect.signature(model_class)
+                            if 'random_state' in sig.parameters:
                                 params["random_state"] = 42
                             
-                            # Create new instance with custom or default params
-                            if params:
+                            try:
                                 return model_class(**params)
-                            else:
-                                return model_class()
+                            except Exception as e:
+                                st.warning(f"⚠️ Error applying some parameters: {str(e)}. Using defaults.")
+                                # Fallback to default instantiation (still trying random_state if supported)
+                                fallback_params = {"random_state": 42} if 'random_state' in sig.parameters else {}
+                                return model_class(**fallback_params)
                         
                         # Train single model
                         if True:
@@ -1064,7 +1110,10 @@ if file:
                                         n_jobs=-1,
                                         verbose=0
                                     )
-                                    grid_search.fit(X_train, y_train)
+                                    if task_type == "Clustering":
+                                        grid_search.fit(X_train)
+                                    else:
+                                        grid_search.fit(X_train, y_train)
                                     model = grid_search.best_estimator_
                                     
                                     st.success(f"✅ Best parameters found: {grid_search.best_params_}")
@@ -1073,8 +1122,11 @@ if file:
                                     st.warning(f"⚠️ Hyperparameter tuning not available for {model_name}. Using default parameters.")
                                     model.fit(X_train, y_train)
                             else:
-                                progress_placeholder.info("📊 Step 4/4: Training model with custom/default parameters...")
-                                model.fit(X_train, y_train)
+                                progress_placeholder.info(f"📊 Step 4/4: {'Grouping' if task_type == 'Clustering' else 'Training'} model...")
+                                if task_type == "Clustering":
+                                    model.fit(X_train)
+                                else:
+                                    model.fit(X_train, y_train)
                             
                             # Store in session state
                             st.session_state.trained_model = model
@@ -1084,6 +1136,12 @@ if file:
                             st.session_state.y_train = y_train
                             st.session_state.y_test = y_test
                             
+                            # Store target metadata for human-readable prediction labels
+                            st.session_state.target_col_name = target_col
+                            original_target = st.session_state.original_df[target_col]
+                            st.session_state.target_classes = sorted(original_target.dropna().unique().tolist())
+                            
+                            # Feature profile already built BEFORE scaling (above) - no need to rebuild.
                             # Keep the categorical mappings from encoding phase (already stored in session state)
                             
                             progress_placeholder.empty()
@@ -1092,6 +1150,56 @@ if file:
                         
                     except Exception as e:
                         st.error(f"❌ Error training model: {str(e)}")
+                
+                # --- AUTO-ML LEADERBOARD SECTION ---
+                st.markdown("---")
+                st.markdown("#### 🧪 AutoML Leaderboard (Compare All)")
+                st.caption("Train and rank every model available for this task type automatically.")
+                
+                if st.button("🏁 Run Multi-Model Comparison", key="run_all_btn"):
+                    all_results = []
+                    prog_bar = st.progress(0)
+                    available_models = get_models_by_task(task_type)
+                    total_m = len(available_models)
+                    
+                    for idx, (m_name, m_obj) in enumerate(available_models.items()):
+                        try:
+                            prog_bar.progress((idx + 1) / total_m)
+                            st.caption(f"Testing {m_name}...")
+                            
+                            # Standard fit (simplest version for speed)
+                            m_obj.fit(X_train, y_train.astype(int) if task_type == 'Classification' else y_train)
+                            y_p = m_obj.predict(X_test)
+                            
+                            res = {'Model': m_name}
+                            if task_type == 'Classification':
+                                res['Accuracy'] = accuracy_score(y_test, y_p)
+                                res['F1-Score'] = f1_score(y_test, y_p, average='weighted', zero_division=0)
+                                sort_key = 'Accuracy'
+                            elif task_type == 'Regression':
+                                res['R² Score'] = r2_score(y_test, y_p)
+                                res['RMSE'] = np.sqrt(mean_squared_error(y_test, y_p))
+                                sort_key = 'R² Score'
+                            else: # Clustering
+                                res['Silhouette'] = silhouette_score(X_test, y_p)
+                                sort_key = 'Silhouette'
+                            
+                            all_results.append(res)
+                        except:
+                            continue
+                    
+                    prog_bar.empty()
+                    if all_results:
+                        leaderboard_df = pd.DataFrame(all_results).sort_values(sort_key, ascending=False if sort_key != 'RMSE' else True)
+                        st.success(f"🏆 **Leaderboard Complete!** Best model: **{leaderboard_df.iloc[0]['Model']}**")
+                        
+                        fig_ldr = px.bar(leaderboard_df, x=sort_key, y='Model', orientation='h', 
+                                       template='plotly_dark', color=sort_key, color_continuous_scale='Purp')
+                        fig_ldr.update_layout(height=max(300, len(leaderboard_df)*40), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig_ldr, use_container_width=True)
+                        st.dataframe(leaderboard_df.style.highlight_max(axis=0, color='#8b5cf6'), use_container_width=True, hide_index=True)
+                    else:
+                        st.error("❌ Leaderboard failed. Ensure data is processed correctly.")
                 
                 st.markdown("---")
                 st.markdown("#### Preview: Training Data")
@@ -1141,6 +1249,22 @@ if file:
                 with col4:
                     st.metric("⚖️ F1-Score", f"{f1:.4f}", delta=None)
                 
+                # Model Download (Persistence)
+                st.markdown("---")
+                try:
+                    import io
+                    model_buffer = io.BytesIO()
+                    pickle.dump(model, model_buffer)
+                    st.download_button(
+                        label="💾 Download Trained Model (.pkl)",
+                        data=model_buffer.getvalue(),
+                        file_name=f"trained_{type(model).__name__}.pkl",
+                        mime="application/octet-stream",
+                        use_container_width=True
+                    )
+                except:
+                    pass
+                
                 st.markdown("---")
                 
                 # Confusion Matrix
@@ -1170,7 +1294,7 @@ if file:
                             text=annotation_text,
                             texttemplate="%{text}",
                             textfont={"size": 14, "color": "white"},
-                            colorscale="Blues",
+                            colorscale="Purples",
                             colorbar=dict(title="Count")
                         ))
                         
@@ -1191,26 +1315,10 @@ if file:
                 
                 st.markdown("---")
                 
-                # Misclassified Samples
-                st.markdown("#### 🔍 Misclassified Samples")
-                misclassified_mask = y_test_class != y_pred_class
-                num_misclassified = misclassified_mask.sum()
-                
-                col1, col2 = st.columns(2)
-                col1.metric("Total Misclassified", num_misclassified)
-                col2.metric("Misclassification Rate (%)", f"{(num_misclassified / len(y_test_class)) * 100:.2f}%")
-                
-                if num_misclassified > 0:
-                    st.markdown("**Sample Misclassified Predictions:**")
-                    misclassified_df = pd.DataFrame({
-                        'Actual': y_test_class.values[misclassified_mask] if hasattr(y_test_class, 'values') else y_test_class[misclassified_mask],
-                        'Predicted': y_pred_class[misclassified_mask]
-                    }).head(10)
-                    st.dataframe(misclassified_df, use_container_width=True)
-                else:
-                    st.success("✅ Perfect classification! No misclassified samples.")
-                
-            else:
+                # Uni-Classification Boundary Logic (Used later in Model Visualization)
+                is_classification = True
+
+            elif task_type == 'Regression':
                 # Regression metrics
                 st.markdown("#### 📊 Regression Metrics")
                 mae = mean_absolute_error(y_test, y_pred)
@@ -1261,7 +1369,65 @@ if file:
                 except Exception as e:
                     st.error(f"❌ Could not generate Residual plot: {str(e)}")
             
-            st.markdown("---")
+                st.markdown("---")
+                
+                # Uni-Regression Diagnostics
+                is_classification = False
+
+            else: # Clustering
+                st.markdown("#### 🧶 Cluster Analysis")
+                c_col1, c_col2 = st.columns(2)
+                
+                with c_col1:
+                    # Silhouette Score
+                    try:
+                        s_score = silhouette_score(X_test, y_pred)
+                        st.metric("✨ Silhouette Score", f"{s_score:.4f}", help="Range: -1 to 1. Higher is better. > 0.5 is good.")
+                    except:
+                        st.warning("⚠️ Could not compute Silhouette score (requires >1 cluster)")
+                    
+                    # Inertia
+                    if hasattr(model, 'inertia_'):
+                        st.metric("📉 Final Inertia", f"{model.inertia_:.2f}")
+                
+                with c_col2:
+                    # Cluster Distribution
+                    counts = pd.Series(y_pred).value_counts().sort_index()
+                    dist_df = pd.DataFrame({'Cluster': [f"Cluster {i}" for i in counts.index], 'Samples': counts.values})
+                    fig_dist = px.pie(dist_df, values='Samples', names='Cluster', 
+                                    template="plotly_dark", color_discrete_sequence=['#8b5cf6', '#c084fc', '#a78bfa', '#6366f1', '#d946ef'])
+                    fig_dist.update_layout(title="Cluster Distribution", height=300, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig_dist, use_container_width=True)
+                
+                st.markdown("---")
+                st.markdown("#### 🗺️ PCA Cluster Map (2D Projection)")
+                
+                try:
+                    # PCA to 2D
+                    pca_c = PCA(n_components=2)
+                    X_c_2d = pca_c.fit_transform(X_test)
+                    
+                    viz_df = pd.DataFrame({
+                        'PC1': X_c_2d[:, 0],
+                        'PC2': X_c_2d[:, 1],
+                        'Cluster': [f"Cluster {c}" for c in y_pred]
+                    })
+                    
+                    # Add ground truth if available and relevant (if target matches unique cluster count roughly)
+                    if hasattr(st.session_state, 'target_col_name'):
+                        viz_df['Original Label'] = y_test.values if hasattr(y_test, 'values') else y_test
+                        fig_c = px.scatter(viz_df, x='PC1', y='PC2', color='Cluster', symbol='Original Label',
+                                         template="plotly_dark", height=600)
+                    else:
+                        fig_c = px.scatter(viz_df, x='PC1', y='PC2', color='Cluster',
+                                         template="plotly_dark", height=600)
+                        
+                    fig_c.update_layout(title="K-Means Clusters in PCA Space")
+                    st.plotly_chart(fig_c, use_container_width=True)
+                except Exception as e:
+                    st.error(f"❌ Could not generate cluster map: {str(e)}")
+                
+                st.markdown("---")
             
             # Model-specific visualizations
             st.markdown("#### 🎨 Model Visualization")
@@ -1330,35 +1496,315 @@ if file:
                     st.info(f"🌲 **Showing Tree #{tree_index + 1}** of {model.n_estimators} trees in the forest")
                 
                 elif 'LogisticRegression' in model_type:
-                    # Logistic Regression - ROC Curve for binary classification
                     if task_type == 'Classification':
-                        st.markdown("**ROC Curve (Logistic Regression):**")
-                        from sklearn.metrics import roc_curve, auc
+                        try:
+                            # ========== 1. Feature Coefficients ==========
+                            st.markdown("**📊 Feature Coefficients (Model Weights):**")
+                            st.caption("Shows how strongly each feature influences the model's prediction. Positive = pushes towards class 1, Negative = pushes towards class 0.")
+                            
+                            coef = model.coef_[0] if model.coef_.ndim > 1 else model.coef_
+                            feat_names = st.session_state.feature_names
+                            coef_df = pd.DataFrame({
+                                'Feature': feat_names,
+                                'Coefficient': coef
+                            }).sort_values('Coefficient', ascending=True)
+                            
+                            colors = ['#f43f5e' if c < 0 else '#22c55e' for c in coef_df['Coefficient']]
+                            
+                            fig_coef = go.Figure(go.Bar(
+                                x=coef_df['Coefficient'],
+                                y=coef_df['Feature'],
+                                orientation='h',
+                                marker=dict(color=colors, line=dict(width=0)),
+                                text=[f"{c:+.3f}" for c in coef_df['Coefficient']],
+                                textposition='outside',
+                                textfont=dict(color='white', size=11)
+                            ))
+                            fig_coef.update_layout(
+                                template='plotly_dark',
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                height=max(300, len(feat_names) * 35),
+                                margin=dict(l=10, r=60, t=30, b=30),
+                                xaxis=dict(title='Coefficient Value', gridcolor='rgba(255,255,255,0.05)', zeroline=True, zerolinecolor='rgba(255,255,255,0.3)'),
+                                yaxis=dict(title=''),
+                                title=dict(text='Feature Impact on Prediction', font=dict(size=14, color='#c4b5fd'))
+                            )
+                            st.plotly_chart(fig_coef, use_container_width=True)
+                            
+                            if hasattr(model, 'intercept_'):
+                                st.info(f"📐 **Intercept (bias):** {model.intercept_[0]:.4f}")
+                            
+                            st.markdown("---")
+                            
+                            # ========== 2. Decision Boundary (PCA-reduced) ==========
+                            st.markdown("**🗺️ Decision Boundary (PCA-reduced to 2D):**")
+                            st.caption("Logistic Regression separating hyperplane projected onto 2 principal components.")
+                            
+                            X_pca_lr = st.session_state.X_train.copy()
+                            y_pca_lr = st.session_state.y_train
+                            
+                            if X_pca_lr.shape[1] >= 2:
+                                if X_pca_lr.isnull().any().any():
+                                    X_pca_lr = X_pca_lr.fillna(X_pca_lr.mean(numeric_only=True))
+                                
+                                scaler_lr = StandardScaler()
+                                X_scaled_lr = scaler_lr.fit_transform(X_pca_lr)
+                                pca_lr = PCA(n_components=2)
+                                X_pca_2d = pca_lr.fit_transform(X_scaled_lr)
+                                
+                                # Retrain a lightweight LR on the 2D space for boundary
+                                from sklearn.linear_model import LogisticRegression as LR2D
+                                lr_2d = LR2D(max_iter=1000, random_state=42)
+                                lr_2d.fit(X_pca_2d, y_pca_lr)
+                                
+                                # Mesh grid
+                                padding = 1.0
+                                x_min, x_max = X_pca_2d[:, 0].min() - padding, X_pca_2d[:, 0].max() + padding
+                                y_min, y_max = X_pca_2d[:, 1].min() - padding, X_pca_2d[:, 1].max() + padding
+                                xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200), np.linspace(y_min, y_max, 200))
+                                grid_points = np.c_[xx.ravel(), yy.ravel()]
+                                
+                                if hasattr(lr_2d, 'predict_proba'):
+                                    Z = lr_2d.predict_proba(grid_points)[:, 1].reshape(xx.shape)
+                                else:
+                                    Z = lr_2d.predict(grid_points).reshape(xx.shape)
+                                
+                                fig_boundary = go.Figure()
+                                
+                                # Decision surface
+                                is_binary = (len(unique_y) == 2)
+                                fig_boundary.add_trace(go.Contour(
+                                    x=np.linspace(x_min, x_max, 200),
+                                    y=np.linspace(y_min, y_max, 200),
+                                    z=Z,
+                                    colorscale='RdBu',
+                                    opacity=0.6,
+                                    showscale=is_binary, # Hide colorbar for multiclass to avoid overlap
+                                    colorbar=dict(
+                                        title=dict(text='P(Class 1)', font=dict(color='white')), 
+                                        tickfont=dict(color='white'),
+                                        x=1.1 # Move slightly further right if shown
+                                    ),
+                                    contours=dict(showlines=False)
+                                ))
+                                
+                                # Data points
+                                palette = ['#f43f5e', '#22c55e', '#3b82f6', '#f59e0b', '#a78bfa', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1']
+                                for idx_c, cls in enumerate(unique_y):
+                                    mask = y_pca_lr == cls
+                                    mask_arr = mask.values if hasattr(mask, 'values') else mask
+                                    fig_boundary.add_trace(go.Scatter(
+                                        x=X_pca_2d[mask_arr, 0],
+                                        y=X_pca_2d[mask_arr, 1],
+                                        mode='markers',
+                                        name=f'Class {int(cls)}',
+                                        marker=dict(size=6, color=palette[idx_c % len(palette)], line=dict(width=0.5, color='white'))
+                                    ))
+                                
+                                fig_boundary.update_layout(
+                                    template='plotly_dark',
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    height=550,
+                                    xaxis_title='Principal Component 1',
+                                    yaxis_title='Principal Component 2',
+                                    title=dict(text='Logistic Regression — Decision Boundary', font=dict(size=14, color='#c4b5fd')),
+                                    legend=dict(
+                                        font=dict(color='white'),
+                                        orientation='h', # Horizontal legend
+                                        yanchor='bottom',
+                                        y=-0.3, # Position below the plot
+                                        xanchor='center',
+                                        x=0.5
+                                    ),
+                                    margin=dict(l=50, r=50, t=50, b=100)
+                                )
+                                st.plotly_chart(fig_boundary, use_container_width=True)
+                            else:
+                                st.warning("⚠️ Need at least 2 features for decision boundary visualization.")
+                            
+                            st.markdown("---")
+                            
+                            # ========== 3. ROC Curve ==========
+                            st.markdown("**📈 ROC Curve:**")
+                            from sklearn.metrics import roc_curve, auc
+                            
+                            unique_classes = np.unique(y_test)
+                            if len(unique_classes) == 2:
+                                y_pred_proba = model.predict_proba(X_test)[:, 1]
+                                fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+                                roc_auc = auc(fpr, tpr)
+                                
+                                fig_roc = go.Figure()
+                                fig_roc.add_trace(go.Scatter(
+                                    x=fpr, y=tpr, mode='lines',
+                                    name=f'ROC Curve (AUC = {roc_auc:.4f})',
+                                    line=dict(color='#a78bfa', width=3),
+                                    fill='tozeroy',
+                                    fillcolor='rgba(167, 139, 250, 0.15)'
+                                ))
+                                fig_roc.add_trace(go.Scatter(
+                                    x=[0, 1], y=[0, 1], mode='lines',
+                                    name='Random Classifier',
+                                    line=dict(color='#475569', dash='dash', width=2)
+                                ))
+                                fig_roc.update_layout(
+                                    template='plotly_dark',
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    height=450,
+                                    xaxis_title='False Positive Rate',
+                                    yaxis_title='True Positive Rate',
+                                    title=dict(text=f'Receiver Operating Characteristic — AUC: {roc_auc:.4f}', font=dict(size=14, color='#c4b5fd')),
+                                    legend=dict(font=dict(color='white'))
+                                )
+                                st.plotly_chart(fig_roc, use_container_width=True)
+                                
+                                # AUC Score Interpretation
+                                if roc_auc >= 0.9:
+                                    st.success(f"🏆 **Excellent** classifier (AUC = {roc_auc:.4f})")
+                                elif roc_auc >= 0.8:
+                                    st.success(f"✅ **Good** classifier (AUC = {roc_auc:.4f})")
+                                elif roc_auc >= 0.7:
+                                    st.info(f"📊 **Fair** classifier (AUC = {roc_auc:.4f})")
+                                else:
+                                    st.warning(f"⚠️ **Poor** classifier (AUC = {roc_auc:.4f}) — consider feature engineering")
+                            else:
+                                st.info(f"ℹ️ ROC Curve is available for binary classification only. Your model has {len(unique_classes)} classes.")
                         
-                        unique_classes = np.unique(y_test)
-                        if len(unique_classes) == 2:
-                            y_pred_proba = model.predict_proba(X_test)[:, 1]
-                            fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
-                            roc_auc = auc(fpr, tpr)
+                        except Exception as e:
+                            st.error(f"❌ Logistic Regression visualization error: {str(e)}")
+                
+                elif any(m in model_type for m in ['KNeighbors', 'SVC', 'SVR']):
+                    # Decision Boundary Visualization (PCA-reduced)
+                    title_prefix = "KNN" if "KNeighbors" in model_type else "SVM"
+                    st.markdown(f"**{title_prefix} Decision Boundaries (PCA-reduced to 2D):**")
+                    
+                    try:
+                        # 1. Prepare data for PCA
+                        X_pca_input = st.session_state.X_train.copy()
+                        y_pca_input = st.session_state.y_train
+                        
+                        # Guard: Check for minimum features
+                        if X_pca_input.shape[1] < 2:
+                            st.warning("⚠️ Visualization requires at least 2 features to perform PCA reduction. Skipping plot.")
+                        else:
+                            # Guard: Handle any lingering NaNs for visualization safety
+                            if X_pca_input.isnull().any().any():
+                                X_pca_input = X_pca_input.fillna(X_pca_input.mean(numeric_only=True))
                             
+                            # 2. Scale data and PCA to 2 dimensions
+                            scaler_viz = StandardScaler()
+                            X_scaled_viz = scaler_viz.fit_transform(X_pca_input)
+                            
+                            pca_viz = PCA(n_components=2)
+                            X_train_pca = pca_viz.fit_transform(X_scaled_viz)
+                            
+                            # Prepare test data for plotting
+                            X_test_clean = st.session_state.X_test.fillna(st.session_state.X_test.mean(numeric_only=True))
+                            X_test_scaled = scaler_viz.transform(X_test_clean)
+                            X_test_pca = pca_viz.transform(X_test_scaled)
+                            
+                            # 3. Retrain a temporary model on 2D data for visualization
+                            model_params = model.get_params()
+                            if task_type == 'Classification':
+                                if 'SVC' in model_type:
+                                    temp_model = SVC(**model_params)
+                                else:
+                                    temp_model = KNeighborsClassifier(**model_params)
+                            else:
+                                if 'SVR' in model_type:
+                                    temp_model = SVR(**model_params)
+                                else:
+                                    temp_model = KNeighborsRegressor(**model_params)
+                            
+                            temp_model.fit(X_train_pca, y_pca_input)
+                            
+                            # 4. Create Meshgrid for background
+                            mesh_res = 200 # High Resolution
+                            x_min, x_max = X_test_pca[:, 0].min() - 0.5, X_test_pca[:, 0].max() + 0.5
+                            y_min, y_max = X_test_pca[:, 1].min() - 0.5, X_test_pca[:, 1].max() + 0.5
+                            
+                            h_x = (x_max - x_min) / mesh_res
+                            h_y = (y_max - y_min) / mesh_res
+                            xx, yy = np.meshgrid(np.arange(x_min, x_max, h_x), np.arange(y_min, y_max, h_y))
+                            
+                            # 5. Predict on meshgrid
+                            Z = temp_model.predict(np.c_[xx.ravel(), yy.ravel()])
+                            Z = Z.reshape(xx.shape)
+                            
+                            # 6. Plot using Plotly
                             fig = go.Figure()
-                            fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', 
-                                                    name=f'ROC Curve (AUC = {roc_auc:.4f})',
-                                                    line=dict(color='#58a6ff', width=3)))
-                            fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines',
-                                                    name='Random Classifier',
-                                                    line=dict(color='#8b949e', dash='dash')))
                             
-                            fig.update_layout(title='ROC Curve - Logistic Regression',
-                                            xaxis_title='False Positive Rate',
-                                            yaxis_title='True Positive Rate',
-                                            template='plotly_dark',
-                                            hovermode='closest',
-                                            height=500)
+                            # Background Contours
+                            if task_type == 'Classification':
+                                fig.add_trace(go.Contour(
+                                    x=np.arange(x_min, x_max, h_x),
+                                    y=np.arange(y_min, y_max, h_y),
+                                    z=Z,
+                                    opacity=0.6,
+                                    showscale=False,
+                                    colorscale='Magma',
+                                    line_width=0,
+                                    hoverinfo='skip'
+                                ))
+                            else:
+                                fig.add_trace(go.Heatmap(
+                                    x=np.arange(x_min, x_max, h_x),
+                                    y=np.arange(y_min, y_max, h_y),
+                                    z=Z,
+                                    opacity=0.6,
+                                    showscale=True,
+                                    colorscale='Magma',
+                                    colorbar=dict(title="Predicted", tickfont=dict(color='white'))
+                                ))
+                                
+                            # Actual Test Data Points
+                            if task_type == 'Classification':
+                                class_colors = ['#f472b6', '#60a5fa', '#34d399', '#fbbf24', '#a855f7']
+                                unique_targets = np.unique(st.session_state.y_test)
+                                for i, target in enumerate(unique_targets):
+                                    mask = st.session_state.y_test == target
+                                    color = class_colors[i % len(class_colors)]
+                                    fig.add_trace(go.Scatter(
+                                        x=X_test_pca[mask, 0],
+                                        y=X_test_pca[mask, 1],
+                                        mode='markers',
+                                        name=f'Class {int(target)}',
+                                        marker=dict(size=10, color=color, line=dict(width=1.5, color='white'))
+                                    ))
+                            else:
+                                fig.add_trace(go.Scatter(
+                                    x=X_test_pca[:, 0],
+                                    y=X_test_pca[:, 1],
+                                    mode='markers',
+                                    marker=dict(size=10, color=st.session_state.y_test, colorscale='Magma', line=dict(width=1.5, color='white')),
+                                    text=st.session_state.y_test,
+                                    name="Test Data"
+                                ))
+                                
+                            subtitle = ""
+                            if "KNeighbors" in model_type:
+                                subtitle = f" (K={model.n_neighbors})"
+                            elif "SVC" in model_type or "SVR" in model_type:
+                                subtitle = f" (Kernel={model.kernel}, C={model.C})"
+                                
+                            fig.update_layout(
+                                title=f"{title_prefix}{subtitle} Decision Boundaries",
+                                xaxis_title="Standardized PC 1",
+                                yaxis_title="Standardized PC 2",
+                                template="plotly_dark",
+                                height=600,
+                                font=dict(family="Outfit", color="white"),
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)'
+                            )
                             
                             st.plotly_chart(fig, use_container_width=True)
-                        else:
-                            st.info(f"ℹ️ ROC Curve is available for binary classification only.")
+                    except Exception as e:
+                        st.error(f"❌ Could not generate Visualization: {str(e)}")
+                
                 
                 elif 'LinearRegression' in model_type:
                     # Linear Regression - Coefficients
@@ -1404,169 +1850,153 @@ if file:
             prediction_mode = st.radio("Select Prediction Mode", ["Manual Input", "Upload Dataset"], horizontal=True)
             
             if prediction_mode == "Manual Input":
-                st.markdown("#### Manual Input Fields")
-                st.info(f"ℹ️ Enter values exactly as they appear in the original dataset. They will be automatically preprocessed before prediction.")
+                # Ensure feature profile exists
+                if "feature_profile" not in st.session_state:
+                    st.error("❌ Prediction Metadata missing. Please re-train your model to enable v2 Prediction Engine.")
+                    st.stop()
                 
-                # Detect categorical features from original dataset
-                # Priority 1: Check original_df_for_ref columns (most reliable)
-                all_categorical = []
-                if "original_df_for_ref" in st.session_state:
-                    all_categorical = st.session_state.original_df_for_ref.select_dtypes(include=['object', 'category']).columns.tolist()
+                profile = st.session_state.feature_profile
                 
-                # Priority 2: Fall back to stored categorical_mappings
-                if not all_categorical and st.session_state.categorical_mappings:
-                    all_categorical = list(st.session_state.categorical_mappings.keys())
-                
-                # Priority 3: Fall back to original_feature_types
-                if not all_categorical and "original_feature_types" in st.session_state:
-                    all_categorical = st.session_state.original_feature_types.get('categorical', [])
-                
-                # DEBUG: Show what was detected
-                with st.expander("🔍 DEBUG: Feature Detection", expanded=True):
-                    st.write("**Categorical Mappings:**")
-                    st.write(st.session_state.categorical_mappings)
-                    st.write("\n**Original Feature Types:**")
-                    st.write(st.session_state.original_feature_types if "original_feature_types" in st.session_state else "NOT SET")
-                    st.write(f"\n**All Features:** {st.session_state.feature_names}")
-                    st.write(f"\n**Detected Categorical (from original_df):** {all_categorical}")
-                
-                # Get unique values from original data for each categorical feature
-                categorical_options = {}
-                for feat in st.session_state.feature_names:
-                    if feat in all_categorical and "original_df_for_ref" in st.session_state:
-                        try:
-                            unique_vals = sorted(st.session_state.original_df_for_ref[feat].unique().tolist())
-                            categorical_options[feat] = unique_vals
-                        except:
-                            pass
-                
-                # Show preprocessing pipeline info
-                st.markdown("**📋 Applied Preprocessing:**")
-                preprocess_cols = st.columns(3)
-                with preprocess_cols[0]:
-                    if st.session_state.categorical_mappings:
-                        st.caption(f"✅ Categorical Encoding: {len(st.session_state.categorical_mappings)} features")
-                    else:
-                        st.caption("⭕ Categorical Encoding: None")
-                with preprocess_cols[1]:
-                    if "scaler" in st.session_state and st.session_state.scaler is not None:
-                        st.caption(f"✅ Scaling: {st.session_state.scaling_method}")
-                    else:
-                        st.caption("⭕ Scaling: None")
-                with preprocess_cols[2]:
-                    st.caption(f"📊 Features: {len(st.session_state.feature_names)}")
-                
-                # Display feature info table with proper type detection
-                feature_info_list = []
-                for feature in st.session_state.feature_names:
-                    if feature in categorical_options:
-                        num_options = len(categorical_options[feature])
-                        feature_info_list.append({
-                            'Feature': feature, 
-                            'Type': 'Categorical', 
-                            'Input': 'Dropdown',
-                            'Unique Values': num_options,
-                            'Example': str(categorical_options[feature][0]) if categorical_options[feature] else 'N/A'
-                        })
-                    else:
-                        feature_info_list.append({
-                            'Feature': feature, 
-                            'Type': 'Numeric', 
-                            'Input': 'Number Input',
-                            'Unique Values': 'Any',
-                            'Example': 'e.g., 25'
-                        })
-                
-                feature_info = pd.DataFrame(feature_info_list)
-                st.dataframe(feature_info, use_container_width=True, hide_index=True)
-                
-                st.markdown("**📝 Input all feature values below:**")
+                # Header with modern glassmorphism
+                st.markdown("""
+                    <div style='background: rgba(255, 255, 255, 0.03); border-radius: 15px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 25px;'>
+                        <h4 style='margin:0; color:#a78bfa;'>📋 Manual Entry Terminal</h4>
+                        <p style='color:#94a3b8; font-size: 0.9em; margin-bottom: 0;'>Enter raw feature values as they appear in the original real-world data. The engine will handle all mathematical transformations internally.</p>
+                    </div>
+                """, unsafe_allow_html=True)
                 
                 input_data = {}
-                cols = st.columns(2)
+                feature_names = st.session_state.feature_names
                 
-                for idx, feature in enumerate(st.session_state.feature_names):
-                    with cols[idx % 2]:
-                        if feature in categorical_options:
-                            # Categorical input - dropdown with original values
-                            selected_val = st.selectbox(
-                                label=f"{feature} (Categorical)",
-                                options=categorical_options[feature],
-                                help=f"Select from available values",
-                                key=f"input_{feature}"
+                # Two-column layout for inputs
+                input_cols = st.columns(2)
+                
+                for idx, feat in enumerate(feature_names):
+                    feat_meta = profile.get(feat, {'type': 'numeric', 'min': 0.0, 'max': 100.0, 'default': 0.0})
+                    
+                    with input_cols[idx % 2]:
+                        if feat_meta['type'] == 'categorical':
+                            # Categorical Dropdown
+                            input_data[feat] = st.selectbox(
+                                label=f"🏷️ {feat}",
+                                options=feat_meta['options'],
+                                index=0 if feat_meta['options'] else None,
+                                key=f"input_v2_{feat}",
+                                help=f"Original categories for {feat}"
                             )
-                            input_data[feature] = selected_val
                         else:
-                            # Numeric input
-                            min_val = st.session_state.X_test[feature].min()
-                            max_val = st.session_state.X_test[feature].max()
-                            avg_val = st.session_state.X_test[feature].mean()
-                            
-                            input_data[feature] = st.number_input(
-                                label=f"{feature} (Numeric)",
-                                value=float(avg_val),
-                                help=f"Range in training data: {min_val:.2f} to {max_val:.2f}",
-                                key=f"input_{feature}"
+                            # Numeric Input with original ranges
+                            input_data[feat] = st.number_input(
+                                label=f"🔢 {feat}",
+                                min_value=float(feat_meta['min']),
+                                max_value=float(feat_meta['max']),
+                                value=float(feat_meta['default']),
+                                key=f"input_v2_{feat}",
+                                help=f"Natural range: {feat_meta['min']} to {feat_meta['max']}"
                             )
                 
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    if st.button("🔮 Predict", key="predict_manual"):
+                st.markdown("---")
+                
+                # Bottom Action Area
+                res_col1, res_col2 = st.columns([1, 2])
+                
+                with res_col1:
+                    if st.button("✨ Generate Prediction", key="predict_v2_btn", use_container_width=True):
                         try:
-                            # Create dataframe from input (with original values)
-                            pred_input = pd.DataFrame([input_data])
+                            # PREPROCESSING BRIDGE: Raw Input -> Model Vector
+                            # 1. Create Dataframe
+                            raw_input_df = pd.DataFrame([input_data])
+                            processed_df = raw_input_df.copy()
                             
-                            # Apply same preprocessing as training data
-                            # Step 1: Encode categorical features using stored mappings
+                            # 2. Apply Categorical Encoding
                             if st.session_state.categorical_mappings:
-                                for feature, mapping in st.session_state.categorical_mappings.items():
-                                    if feature in pred_input.columns:
-                                        original_val = pred_input[feature].iloc[0]
-                                        # Convert using the mapping: original value → numeric
-                                        numeric_val = mapping.get(str(original_val), original_val)
-                                        pred_input[feature] = numeric_val
+                                for cat_feat, mapping in st.session_state.categorical_mappings.items():
+                                    if cat_feat in processed_df.columns:
+                                        val = str(processed_df[cat_feat].iloc[0])
+                                        processed_df[cat_feat] = mapping.get(val, 0) # Fallback to 0 if unknown
                             
-                            # Step 2: Apply scaling to numeric features using stored scaler
+                            # 3. Apply Scaling
                             if "scaler" in st.session_state and st.session_state.scaler is not None:
-                                numeric_cols = st.session_state.numeric_columns_for_scaling
-                                if numeric_cols:
-                                    cols_to_scale = [col for col in numeric_cols if col in pred_input.columns]
-                                    if cols_to_scale:
-                                        pred_input[cols_to_scale] = st.session_state.scaler.transform(pred_input[cols_to_scale])
+                                num_cols = st.session_state.numeric_columns_for_scaling
+                                if num_cols:
+                                    scale_targets = [c for c in num_cols if c in processed_df.columns]
+                                    if scale_targets:
+                                        processed_df[scale_targets] = st.session_state.scaler.transform(processed_df[scale_targets])
                             
-                            # Make prediction
-                            prediction = model.predict(pred_input)[0]
-                            
-                            if task_type == 'Classification':
-                                if hasattr(model, 'predict_proba'):
-                                    probabilities = model.predict_proba(pred_input)[0]
-                                    st.success(f"✅ **Prediction: {int(prediction)}**")
-                                    
-                                    # Show probabilities as bar chart
-                                    prob_df = pd.DataFrame({
-                                        'Class': [str(int(c)) for c in np.unique(y_test)],
-                                        'Probability': probabilities
-                                    })
-                                    st.dataframe(prob_df, use_container_width=True)
-                                    
-                                    fig = px.bar(prob_df, x='Class', y='Probability', 
-                                               template="plotly_dark", color_discrete_sequence=['#58a6ff'],
-                                               title="Prediction Confidence by Class")
-                                    st.plotly_chart(fig, use_container_width=True)
+                            # 4. Predict
+                            with st.spinner("Analyzing data patterns..."):
+                                raw_prediction = model.predict(processed_df)[0]
+                                
+                                # Build human-readable label
+                                target_name = st.session_state.get('target_col_name', 'Target')
+                                target_classes = st.session_state.get('target_classes', [])
+                                
+                                if task_type == "Classification":
+                                    pred_int = int(raw_prediction)
+                                    # Try to map back to original value
+                                    if target_classes and pred_int < len(target_classes):
+                                        original_value = target_classes[pred_int]
+                                        display_label = f"{original_value}"
+                                        display_subtitle = f"{target_name} = {original_value} (Class {pred_int})"
+                                    else:
+                                        display_label = f"Class {pred_int}"
+                                        display_subtitle = f"{target_name} = {pred_int}"
                                 else:
-                                    st.success(f"✅ **Prediction: {int(prediction)}**")
-                            else:
-                                st.success(f"✅ **Predicted Value: {prediction:.4f}**")
+                                    display_label = f"{raw_prediction:.4f}"
+                                    display_subtitle = f"{target_name} = {raw_prediction:.4f}"
+                                
+                                st.session_state.last_prediction = {
+                                    'value': display_label,
+                                    'subtitle': display_subtitle,
+                                    'type': task_type,
+                                    'raw': raw_prediction,
+                                    'target_name': target_name,
+                                    'target_classes': target_classes
+                                }
+                                
+                                if task_type == 'Classification' and hasattr(model, 'predict_proba'):
+                                    st.session_state.last_prediction['probs'] = model.predict_proba(processed_df)[0]
                         
                         except Exception as e:
-                            st.error(f"❌ Prediction error: {str(e)}")
+                            st.error(f"❌ Processing Error: {str(e)}")
                 
-                with col2:
-                    st.markdown("**Input Summary:**")
-                    st.caption(f"✅ Total features: {len(st.session_state.feature_names)}")
-                    st.caption(f"✅ Categorical: {len(categorical_options)} features")
-                    st.caption(f"📊 Numeric: {len(st.session_state.feature_names) - len(categorical_options)} features")
-                    st.caption("💡 Tip: Values outside training range may give unusual predictions")
+                # Results Display Area (Glassmorphic)
+                with res_col2:
+                    if "last_prediction" in st.session_state:
+                        pred = st.session_state.last_prediction
+                        
+                        # Premium Result Design
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(30, 41, 59, 0.8) 100%); 
+                                        padding: 25px; border-radius: 20px; border: 1px solid rgba(139, 92, 246, 0.3); text-align: center;'>
+                                <div style='color: #c4b5fd; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;'>{pred.get('target_name', 'Prediction')}</div>
+                                <div style='font-size: 3.5rem; font-weight: 800; color: white; line-height: 1; margin-bottom: 10px;'>{pred['value']}</div>
+                                <div style='height: 4px; width: 60px; background: #8b5cf6; margin: 15px auto; border-radius: 2px;'></div>
+                                <div style='color: #94a3b8;'>{pred.get('subtitle', '')} • {pred['type']} ✅</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Confidence Visualization
+                        if 'probs' in pred:
+                            # Use human-readable class names
+                            tc = pred.get('target_classes', [])
+                            # Get classes directly from the model to guarantee matching length with 'probs'
+                            model_classes = st.session_state.trained_model.classes_
+                            class_labels = []
+                            for c in model_classes:
+                                c_int = int(c)
+                                # Map back to human readable if possible
+                                if tc and c_int < len(tc):
+                                    class_labels.append(f"{tc[c_int]}")
+                                else:
+                                    class_labels.append(f"Class {c_int}")
+                            
+                            prob_df = pd.DataFrame({'Class': class_labels, 'Confidence': pred['probs']})
+                            fig = px.bar(prob_df, x='Confidence', y='Class', orientation='h',
+                                       color='Confidence', color_continuous_scale='Purp',
+                                       height=250, template='plotly_dark')
+                            fig.update_layout(margin=dict(l=0,r=0,t=20,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                            st.plotly_chart(fig, use_container_width=True)
             
             else:
                 st.markdown("#### Upload Dataset for Batch Predictions")
@@ -1658,11 +2088,35 @@ if file:
                             # Select only required features
                             pred_df_subset = pred_df[st.session_state.feature_names].copy()
                             
-                            # Apply encoding to the data (without showing conversion info)
+                            # Robust Preprocessing for Batch Data
+                            # 1. Fill missing values using training set logic
+                            missing_count = pred_df_subset.isnull().sum().sum()
+                            if missing_count > 0:
+                                st.info(f"🧹 Auto-cleaning: Filling {missing_count} missing values in prediction data...")
+                                # Use training set means for numeric
+                                if "numeric_columns_in_training" in st.session_state:
+                                    for col in st.session_state.numeric_columns_in_training:
+                                        if col in pred_df_subset.columns:
+                                            # If training mean exists in current_df...
+                                            mean_val = st.session_state.current_df[col].mean() if col in st.session_state.current_df.columns else 0
+                                            pred_df_subset[col] = pred_df_subset[col].fillna(mean_val)
+                            
+                            # 2. Safe Encoding (Handle Unseen Categories)
                             if st.session_state.categorical_mappings:
                                 for feature in st.session_state.categorical_mappings:
                                     if feature in pred_df_subset.columns:
-                                        pred_df_subset[feature] = pred_df_subset[feature].astype(str).map(st.session_state.categorical_mappings[feature])
+                                        mapping = st.session_state.categorical_mappings[feature]
+                                        
+                                        # Function to safely map values
+                                        def safe_map(val):
+                                            val_str = str(val)
+                                            if val_str in mapping:
+                                                return mapping[val_str]
+                                            else:
+                                                # Use the mode (most common code) as fallback for unseen values
+                                                return list(mapping.values())[0] if mapping else 0
+                                        
+                                        pred_df_subset[feature] = pred_df_subset[feature].apply(safe_map)
                             
                             if st.button("🔮 Predict All", key="predict_batch"):
                                 try:
@@ -1716,41 +2170,21 @@ if file:
             col1, col2 = st.columns(2)
             
             with col1:
-                clustering_method = st.selectbox("Select Clustering Method", ["K-Means", "DBSCAN"])
-            
-            with col2:
-                if clustering_method == "K-Means":
-                    n_clusters = st.slider("Number of Clusters", 2, 10, 3)
-                else:
-                    eps = st.slider("EPS (Epsilon)", 0.1, 2.0, 0.5, step=0.1)
-                    min_samples = st.slider("Min Samples", 2, 20, 5)
+                st.info("K-Means Clustering: Grouping data based on proximity to centroids.")
+                n_clusters = st.slider("Number of Clusters", 2, 10, 3)
             
             if st.button("🚀 Run Clustering"):
                 try:
-                    if clustering_method == "K-Means":
-                        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-                        clusters = kmeans.fit_predict(df_numeric)
-                        silhouette_avg = silhouette_score(df_numeric, clusters)
-                        
-                        col1, col2 = st.columns(2)
-                        col1.metric("Number of Clusters", n_clusters)
-                        col2.metric("Silhouette Score", f"{silhouette_avg:.4f}")
-                        
-                        st.info(f"✅ Clustering complete! Silhouette Score: {silhouette_avg:.4f}")
-                        st.caption("Silhouette Score: -1 (bad) to 1 (perfect) - measures cluster quality")
-                        
-                    else:  # DBSCAN
-                        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-                        clusters = dbscan.fit_predict(df_numeric)
-                        n_clusters_found = len(set(clusters)) - (1 if -1 in clusters else 0)
-                        n_noise = list(clusters).count(-1)
-                        
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("Clusters Found", n_clusters_found)
-                        col2.metric("Noise Points", n_noise)
-                        col3.metric("Total Points", len(clusters))
-                        
-                        st.info(f"✅ DBSCAN clustering complete! Found {n_clusters_found} clusters")
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                    clusters = kmeans.fit_predict(df_numeric)
+                    silhouette_avg = silhouette_score(df_numeric, clusters)
+                    
+                    col1, col2 = st.columns(2)
+                    col1.metric("Number of Clusters", n_clusters)
+                    col2.metric("Silhouette Score", f"{silhouette_avg:.4f}")
+                    
+                    st.info(f"✅ Clustering complete! Silhouette Score: {silhouette_avg:.4f}")
+                    st.caption("Silhouette Score: -1 (bad) to 1 (perfect) - measures cluster quality")
                     
                     # Visualize clusters with first 2 PCA components
                     if df_numeric.shape[1] > 1:
