@@ -231,6 +231,11 @@ if file:
         st.session_state.current_df = raw_df
         st.session_state.original_df = raw_df.copy()
         st.session_state.uploaded_file = file.name
+        
+        # Capture ORIGINAL categorical columns BEFORE any encoding
+        # This is needed later in model training to properly identify which columns need encoding
+        original_categorical_cols = raw_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        st.session_state.original_categorical_cols = original_categorical_cols
 
     # Load from persistent state and ALWAYS deduplicate columns
     df = st.session_state.current_df
@@ -777,14 +782,12 @@ if file:
                         with lr_cols[1]:
                             lr_max_iter = st.number_input("max_iter", min_value=100, max_value=5000, value=1000)
                             lr_fit_intercept = st.checkbox("fit_intercept", value=True)
-                        lr_multi_class = st.selectbox("multi_class", ["auto", "ovr", "multinomial"], index=0)
                         
                         custom_params = {
                             "penalty": lr_penalty,
                             "C": lr_C,
                             "max_iter": lr_max_iter,
-                            "fit_intercept": lr_fit_intercept,
-                            "multi_class": lr_multi_class
+                            "fit_intercept": lr_fit_intercept
                         }
 
                     elif model_name == "Linear Regression":
@@ -921,11 +924,39 @@ if file:
                                     X_for_training[col] = X_for_training[col].fillna("Unknown")
                             st.success(f"✅ Data auto-cleaned! Handled {missing_values} missing values.")
                         
-                        # Feature Selection: Remove weak features
-                        if use_feature_selection:
-                            progress_placeholder.info("📊 Step 1/5: Analyzing feature importance...")
+                        # Encode categorical features using original_feature_types (BEFORE feature selection)
+                        progress_placeholder.info("📊 Step 1/4: Encoding categorical features...")
+                        
+                        # Use original_categorical_cols to identify which columns are categorical
+                        # This is set right when the CSV is loaded, before any encoding happens
+                        categorical_features = st.session_state.original_categorical_cols.copy()
+                        # Filter to only those in X_for_training (in case some were dropped)
+                        categorical_features = [c for c in categorical_features if c in X_for_training.columns]
+                        
+                        # Initialize categorical mappings
+                        st.session_state.categorical_mappings = {}
+                        
+                        if categorical_features:
+                            encoding_info = []
+                            for cat_col in categorical_features:
+                                le = LabelEncoder()
+                                encoded_vals = le.fit_transform(X_for_training[cat_col].astype(str))
+                                X_for_training[cat_col] = encoded_vals
+                                
+                                # Store the mapping for later use in predictions
+                                mapping = dict(zip(le.classes_, le.transform(le.classes_)))
+                                st.session_state.categorical_mappings[cat_col] = mapping
+                                encoding_info.append(f"✅ {cat_col} ({len(mapping)} unique values)")
                             
-                            # Train a quick model to get feature importance
+                            st.success(f"🔄 **Encoded {len(categorical_features)} categorical features:**\n" + " | ".join(encoding_info))
+                        else:
+                            st.info("ℹ️ No categorical features found.")
+                        
+                        # Feature Selection: Remove weak features (NOW on encoded data)
+                        if use_feature_selection:
+                            progress_placeholder.info("📊 Step 2/4: Analyzing feature importance...")
+                            
+                            # Train a quick model to get feature importance (on encoded data)
                             if task_type == "Classification":
                                 temp_model = RandomForestClassifier(n_estimators=50, random_state=42)
                             else:
@@ -952,70 +983,71 @@ if file:
                                 st.success(f"✅ Selected {len(important_features)} important features (removed {len(X.columns) - len(important_features)})")
                                 st.dataframe(importance_df, use_container_width=True)
                         
-                        # Encode categorical features
-                        progress_placeholder.info("📊 Step 2/5: Encoding categorical features...")
-                        X_for_training = X_for_training.copy()
-                        categorical_features = X_for_training.select_dtypes(include=['object', 'category']).columns.tolist()
-                        
-                        # Explicit initialization
-                        if not hasattr(st.session_state, 'categorical_mappings'):
-                            st.session_state.categorical_mappings = {}
-                        
-                        if categorical_features:
-                            st.session_state.categorical_mappings = {}  # Reset to ensure clean state
-                            encoding_info = []
-                            for cat_col in categorical_features:
-                                le = LabelEncoder()
-                                encoded_vals = le.fit_transform(X_for_training[cat_col].astype(str))
-                                X_for_training[cat_col] = encoded_vals
-                                
-                                # Store the mapping for later use in predictions - maps original values to numeric
-                                mapping = dict(zip(le.classes_, le.transform(le.classes_)))
-                                st.session_state.categorical_mappings[cat_col] = mapping
-                                # Only show feature name and count of unique values (concise)
-                                encoding_info.append(f"✅ {cat_col} ({len(mapping)} unique values)")
-                            
-                            st.success(f"🔄 **Encoded {len(categorical_features)} categorical features:**\n" + " | ".join(encoding_info))
-                        else:
-                            st.info("ℹ️ No categorical features found in the selected features.")
-                        
                         # =============================================
                         # BUILD FEATURE PROFILE (HUMAN-READABLE)
-                        # Uses original_df (raw untouched CSV) for real values
+                        # Uses original_categorical_cols, original_df, and categorical_mappings
                         # =============================================
                         raw_df = st.session_state.original_df  # UNTOUCHED raw CSV
                         feature_profile = {}
                         
+                        # Smart defaults for Titanic dataset
+                        smart_defaults = {
+                            'Pclass': 3,
+                            'Sex': 'male',
+                            'Age': 25,
+                            'SibSp': 0,
+                            'Parch': 0,
+                            'Fare': 10.0,
+                            'Cabin': '',
+                            'Embarked': 'S',
+                            'Ticket': 5000.0
+                        }
+                        
                         for col in X_for_training.columns:
-                            # Check if this column was originally text/categorical in the RAW CSV
-                            if col in raw_df.columns and raw_df[col].dtype == 'object':
-                                # This is a categorical column - show original text values
-                                raw_vals = sorted([str(v) for v in raw_df[col].dropna().unique().tolist()])
-                                # Build/update mapping from string -> number
-                                if col not in st.session_state.categorical_mappings:
-                                    st.session_state.categorical_mappings[col] = {v: i for i, v in enumerate(raw_vals)}
-                                feature_profile[col] = {
-                                    'type': 'categorical',
-                                    'options': raw_vals,
-                                    'default': raw_vals[0] if raw_vals else ''
-                                }
-                            elif col in st.session_state.categorical_mappings:
-                                # Already have a mapping from the encoding step
-                                options = list(st.session_state.categorical_mappings[col].keys())
-                                feature_profile[col] = {
-                                    'type': 'categorical',
-                                    'options': options,
-                                    'default': options[0] if options else ''
-                                }
+                            # Check if this column was originally categorical
+                            if col in st.session_state.original_categorical_cols:
+                                # Get options from the ORIGINAL raw CSV data
+                                if col in raw_df.columns:
+                                    # Get unique values from original data
+                                    raw_vals = sorted([str(v) for v in raw_df[col].dropna().unique().tolist()])
+                                    
+                                    # Set default value
+                                    default_val = None
+                                    if col in smart_defaults and str(smart_defaults[col]) in raw_vals:
+                                        default_val = str(smart_defaults[col])
+                                    else:
+                                        default_val = raw_vals[0] if raw_vals else ''
+                                    
+                                    feature_profile[col] = {
+                                        'type': 'categorical',
+                                        'options': raw_vals,
+                                        'default': default_val
+                                    }
+                                else:
+                                    # Fallback if column not in raw_df
+                                    feature_profile[col] = {
+                                        'type': 'numeric', 'min': 0.0, 'max': 100.0, 'default': 0.0
+                                    }
                             else:
-                                # Numeric: pull ORIGINAL ranges from untouched CSV
+                                # Numeric feature: pull ranges from original CSV
                                 if col in raw_df.columns:
                                     col_data = pd.to_numeric(raw_df[col], errors='coerce').dropna()
+                                    min_val = float(col_data.min()) if len(col_data) > 0 else 0.0
+                                    max_val = float(col_data.max()) if len(col_data) > 0 else 100.0
+                                    median_val = float(col_data.median()) if len(col_data) > 0 else 0.0
+                                    
+                                    # Use smart default if within range, else use median
+                                    default_val = median_val
+                                    if col in smart_defaults:
+                                        smart_val = float(smart_defaults[col])
+                                        if min_val <= smart_val <= max_val:
+                                            default_val = smart_val
+                                    
                                     feature_profile[col] = {
                                         'type': 'numeric',
-                                        'min': float(col_data.min()) if len(col_data) > 0 else 0.0,
-                                        'max': float(col_data.max()) if len(col_data) > 0 else 100.0,
-                                        'default': float(col_data.median()) if len(col_data) > 0 else 0.0
+                                        'min': min_val,
+                                        'max': max_val,
+                                        'default': default_val
                                     }
                                 else:
                                     feature_profile[col] = {
@@ -1051,7 +1083,7 @@ if file:
                         st.session_state.numeric_columns_in_training = numeric_training_cols
                         
                         # Split data
-                        progress_placeholder.info("📊 Step 3/5: Splitting data...")
+                        progress_placeholder.info("📊 Step 3/4: Splitting data...")
                         X_train, X_test, y_train, y_test = train_test_split(
                             X_for_training, y_processed, test_size=test_size, random_state=42
                         )
@@ -1080,14 +1112,14 @@ if file:
                         # Train single model
                         if True:
                             # Train single model
-                            progress_placeholder.info("📊 Step 4/5: Training model...")
+                            progress_placeholder.info("📊 Step 4/4: Training model...")
                             
                             # Apply custom parameters
                             model = apply_custom_params(model_name, available_models[model_name].__class__, custom_params)
                             
                             # Hyperparameter Tuning
                             if use_hyperparameter_tuning:
-                                progress_placeholder.info("📊 Step 5/5: Tuning hyperparameters (this may take a minute)...")
+                                progress_placeholder.info("📊 Tuning hyperparameters (this may take a minute)...")
                                 
                                 # Define parameter grids for different models
                                 param_grids = {
@@ -1150,56 +1182,6 @@ if file:
                         
                     except Exception as e:
                         st.error(f"❌ Error training model: {str(e)}")
-                
-                # --- AUTO-ML LEADERBOARD SECTION ---
-                st.markdown("---")
-                st.markdown("#### 🧪 AutoML Leaderboard (Compare All)")
-                st.caption("Train and rank every model available for this task type automatically.")
-                
-                if st.button("🏁 Run Multi-Model Comparison", key="run_all_btn"):
-                    all_results = []
-                    prog_bar = st.progress(0)
-                    available_models = get_models_by_task(task_type)
-                    total_m = len(available_models)
-                    
-                    for idx, (m_name, m_obj) in enumerate(available_models.items()):
-                        try:
-                            prog_bar.progress((idx + 1) / total_m)
-                            st.caption(f"Testing {m_name}...")
-                            
-                            # Standard fit (simplest version for speed)
-                            m_obj.fit(X_train, y_train.astype(int) if task_type == 'Classification' else y_train)
-                            y_p = m_obj.predict(X_test)
-                            
-                            res = {'Model': m_name}
-                            if task_type == 'Classification':
-                                res['Accuracy'] = accuracy_score(y_test, y_p)
-                                res['F1-Score'] = f1_score(y_test, y_p, average='weighted', zero_division=0)
-                                sort_key = 'Accuracy'
-                            elif task_type == 'Regression':
-                                res['R² Score'] = r2_score(y_test, y_p)
-                                res['RMSE'] = np.sqrt(mean_squared_error(y_test, y_p))
-                                sort_key = 'R² Score'
-                            else: # Clustering
-                                res['Silhouette'] = silhouette_score(X_test, y_p)
-                                sort_key = 'Silhouette'
-                            
-                            all_results.append(res)
-                        except:
-                            continue
-                    
-                    prog_bar.empty()
-                    if all_results:
-                        leaderboard_df = pd.DataFrame(all_results).sort_values(sort_key, ascending=False if sort_key != 'RMSE' else True)
-                        st.success(f"🏆 **Leaderboard Complete!** Best model: **{leaderboard_df.iloc[0]['Model']}**")
-                        
-                        fig_ldr = px.bar(leaderboard_df, x=sort_key, y='Model', orientation='h', 
-                                       template='plotly_dark', color=sort_key, color_continuous_scale='Purp')
-                        fig_ldr.update_layout(height=max(300, len(leaderboard_df)*40), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig_ldr, use_container_width=True)
-                        st.dataframe(leaderboard_df.style.highlight_max(axis=0, color='#8b5cf6'), use_container_width=True, hide_index=True)
-                    else:
-                        st.error("❌ Leaderboard failed. Ensure data is processed correctly.")
                 
                 st.markdown("---")
                 st.markdown("#### Preview: Training Data")
@@ -1572,6 +1554,9 @@ if file:
                                 
                                 fig_boundary = go.Figure()
                                 
+                                # Get unique classes for visualization
+                                unique_y = np.unique(y_pca_lr)
+                                
                                 # Decision surface
                                 is_binary = (len(unique_y) == 2)
                                 fig_boundary.add_trace(go.Contour(
@@ -1633,7 +1618,9 @@ if file:
                             unique_classes = np.unique(y_test)
                             if len(unique_classes) == 2:
                                 y_pred_proba = model.predict_proba(X_test)[:, 1]
-                                fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+                                # Specify pos_label as the higher class value to handle non-standard labels
+                                pos_label = max(unique_classes)
+                                fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=pos_label)
                                 roc_auc = auc(fpr, tpr)
                                 
                                 fig_roc = go.Figure()
